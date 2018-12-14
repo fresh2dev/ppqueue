@@ -467,6 +467,4 @@ plt
 
 ## Notebook of Examples
 
-Many more examples can be found in this Jupyter notebook:
-
-[ezpq/examples.ipynb](ezpq/examples.ipynb)
+Many more examples can be found in [docs/examples.ipynb](docs/examples.ipynb).
