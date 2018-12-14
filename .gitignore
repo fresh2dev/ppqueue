@@ -3,3 +3,5 @@ __pycache__
 .vscode
 *.csv
 *.pyc
+.Rhistory
+examples.py

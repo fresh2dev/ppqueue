@@ -352,7 +352,7 @@ Output size: 10
 
 ### `dispose`
 
-The queueing operations performed by `ezpq.Queue` are performed on a periodic basis. By default, the `poll` parameter for a Queue is `0.1`, or 100 ms., or ten times a second. This "pulse" will continue until the Queue is disposed of. 
+The queueing operations performed by `ezpq.Queue` are performed on a periodic basis. By default, the `poll` parameter for a Queue is `0.1`, or 100 ms., or ten times a second. This "pulse" will continue until the Queue is disposed of.
 
 In the previous examples, we have not concerned ourselves with disposing of the `ezpq.Queue`, as it is done automatically with the context manager (`with ezpq.Queue() as Q...`). However, if you choose not to use the context manager or decorator interfaces, you must clean up after yourself.
 
@@ -469,15 +469,4 @@ plt
 
 Many more examples can be found in this Jupyter notebook:
 
-[https://github.com/dm3ll3n/ezpq/examples.ipynb](https://github.com/dm3ll3n/ezpq/examples.ipynb)
-
-Here is a list of plots produced from the examples in the notebook above:
-
-![](docs/imgs/100x1x10_priority.png)
-![](docs/imgs/100x1x10.png)
-![](docs/imgs/100xNx10_timeouts.png)
-![](docs/imgs/100xNx10.png)
-![](docs/imgs/50x11.png)
-![](docs/imgs/50x1x10.png)
-![](docs/imgs/50xNx10_timeouts.png)
-![](docs/imgs/50xNx5_timeouts.png)
+[ezpq/examples.ipynb](ezpq/examples.ipynb)
