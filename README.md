@@ -109,7 +109,7 @@ def random_sleep(x, min=0, max=1):
     time.sleep(n)
     return 'Job {} slept {} seconds.'.format(x, round(n, 2))
 
-output = random_sleep(items=range(10), min=0, max=2)
+output = random_sleep(iterable=range(10), min=0, max=2)
 
 output
 ```

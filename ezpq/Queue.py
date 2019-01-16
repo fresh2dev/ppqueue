@@ -124,8 +124,8 @@ class Queue():
         if not self.is_started():
             self.start()
 
-        def wrapped_f(items, *args, **kwargs):
-            for x in items:
+        def wrapped_f(iterable, *args, **kwargs):
+            for x in iterable:
                 self.put(function=fun, args=[x]+list(args), kwargs=kwargs)
             self.wait()
             job_data = self.collect()
@@ -519,7 +519,33 @@ class Queue():
 
         return self.submit(job)
 
+    def map(self, function, iterable, args=None, kwargs=None, ordered=True, timeout=0):
+        
+        assert hasattr(iterable, '__iter__')
 
+        if args is None:
+            args = [None]
+        elif not hasattr(args, '__iter__'):
+            args = [None] + [args]
+        elif len(args) == 0:
+            args = [None]
+        else:
+            args = [None] + list(args)
+        
+        if ordered and self.is_started():
+            self._stop()
+
+        for i,x in enumerate(iterable):
+            args[0] = x
+            job = ezpq.Job(function=function, args=list(args), kwargs=kwargs, priority=1, timeout=timeout)
+            if ordered: job.priority = i
+            self.submit(job)
+    
+        if ordered:
+            self.start()
+
+        self.wait()
+        return self.collect()
 
     def get(self, poll=0, timeout=0):
         """Pops the highest priority item from the completed queue.
