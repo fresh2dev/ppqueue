@@ -165,8 +165,9 @@ class RepeatedTimer():
             self.is_running = True
 
     def stop(self):
-        self._timer.cancel()
-        self.is_running = False
+        if self.is_running:
+            self._timer.cancel()
+            self.is_running = False
 
 
 class Job():
@@ -227,7 +228,7 @@ class Job():
 
     def _join(self):
         '''Waits for the inner job to complete.
-        
+
         Returns:
             None
         '''
@@ -336,7 +337,7 @@ class Job():
 
 
 class Queue():
-    
+
     def __init__(self,
                  job_runner = mp.Process,
                  n_workers = mp.cpu_count(),
@@ -437,10 +438,11 @@ class Queue():
         try:
             out = _job.function(*args, **kwargs)
         except Exception as ex:
+            err = True
             out = str(ex)
 
         self._output.update({ _job._id: {'_ended':time.time(), '_output':out} })
-        
+
         if err:
             raise Exception(out)
 
@@ -543,7 +545,7 @@ class Queue():
         start = time.time()
 
         if self._lock.locked():
-            log.warning('Pulse already running. If you see this repeatedly, consider increasing the value of "poll", or removing a slow callback.')
+            log.warning('Pulse already running.') #' If you see this repeatedly, consider increasing the value of "poll", or removing a slow callback.')
         elif self._auto_stop and not self.has_work():
             self._stop()
         else:
@@ -755,7 +757,7 @@ class Queue():
 
     def submit(self, job):
         '''Submits a job into the ezpq.Queue system.
-        
+
         Throws an exception if:
             1. the Queue uses a Thread job_runner and this job has a timeout (can't terminate Threads),
             2. the Queue max_size will be exceeded after adding this job.
@@ -814,7 +816,7 @@ class Queue():
 
         return self.submit(job)
 
-        
+
 
     def get(self, poll=0, timeout=0):
         """Pops the highest priority item from the completed queue.

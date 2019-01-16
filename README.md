@@ -1,21 +1,20 @@
 # `ezpq`: an easy parallel queueing system.
 
-* [`ezpq`: an easy parallel queueing system.](#ezpq-an-easy-parallel-queueing-system)
-  * [Background](#background)
-  * [Overview](#overview)
-  * [Features](#features)
-  * [How to get it](#how-to-get-it)
-  * [Quickstart](#quickstart)
-  * [`ezpq.Queue`](#ezpqqueue)
-    * [`put`](#put)
-    * [`size`](#size)
-    * [`wait`](#wait)
-    * [`get`](#get)
-    * [`collect`](#collect)
-    * [`dispose`](#dispose)
-    * [Decorator](#decorator)
-  * [`ezpq.Plot`](#ezpqplot)
-  * [Notebook of Examples](#notebook-of-examples)
+* [Background](#background)
+* [Overview](#overview)
+* [Features](#features)
+* [How to get it](#how-to-get-it)
+* [Quickstart](#quickstart)
+* [`ezpq.Queue`](#ezpqqueue)
+  * [`put`](#put)
+  * [`size`](#size)
+  * [`wait`](#wait)
+  * [`get`](#get)
+  * [`collect`](#collect)
+  * [`dispose`](#dispose)
+  * [`@decorator`](#decorator)
+* [`ezpq.Plot`](#ezpqplot)
+* [Notebook of Examples](#notebook-of-examples)
 
 ## Background
 
@@ -49,13 +48,14 @@ Note that this is not a traditonal first-in/first-out (FIFO) queue. Given the pa
 
 ## How to get it
 
-Install from the [PyPI]() with:
+Install from [PyPI](https://pypi.org/project/ezpq/) with:
 
 ```python
 pip install ezpq
 ```
 
-To use the optional plotting features, install `pandas` and `plotnine`, or run:
+To use the optional plotting features, install `pandas` and `plotnine`, or run...
+
 
 ```python
 pip install ezpq[plot]
@@ -63,7 +63,7 @@ pip install ezpq[plot]
 
 ## Quickstart
 
-Suppose you wanted to speed up the following code, which has 10 inputs that each take exactly 1 second to run, and stores the output:
+Suppose you wanted to speed up the following code, which has 10 inputs that each take exactly 1 second to run, and stores the output...
 
 ```python
 import random
@@ -152,7 +152,6 @@ df = pd.DataFrame(output)
 df[['name', 'output', 'runtime']].head()
 ```
 
-
 name|output|runtime
 ---|---|---
 1|Job 0 slept 0.24 seconds.|0.24535608291625977
@@ -160,7 +159,6 @@ name|output|runtime
 3|Job 2 slept 0.72 seconds.|0.7306220531463623
 4|Job 3 slept 0.79 seconds.|0.8023269176483154
 5|Job 4 slept 0.29 seconds.|0.3013160228729248
-
 
 The class `ezpq.Plot` uses data returned from an `ezpq.Queue` to produce a Gannt chart of the job runtimes. This feature introduces the only non-standard dependencies; you will need `pandas` for the data reshaping and `plotnine` for the visualizations.
 
@@ -290,6 +288,7 @@ Timeout reached; 3 jobs remain.
 Timeout reached; 1 jobs remain.
 0 jobs remain.
 ```
+
 
 ### `get`
 
@@ -440,7 +439,7 @@ plt = ezpq.Plot(output).build()
 plt
 ```
 
-![100x1x10](docs/imgs/sync_async.png)
+![](docs/imgs/sync_async.png)
 
 Each horizontal bar represents an independent job id. The start of the gray bar indicates when the job entered the queuing system. The start of the colored bar indicates when the job started running, and when it ended. The gray bar that follows (if any) reflects how long it took for the queue operations to recognize the finished job, join the job data with its output, remove it from the working table, and place it in the completed queue.
 

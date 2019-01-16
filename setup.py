@@ -9,16 +9,20 @@ HERE = pathlib.Path(__file__).parent
 # The text of the README file
 README = (HERE / "README.md").read_text()
 
+
 setup(
     name="ezpq",
     version="0.1.0",
+    download_url = 'https://github.com/dm3ll3n/ezpq/archive/0.1.0.tar.gz',
     description="an easy parallel queueing system",
     long_description=README,
-    url="https://donaldmellenbruch.com/project/ezpq",
+    long_description_content_type='text/markdown',
+    url="https://www.github.com/dm3ll3n/ezpq",
     author="Donald Mellenbruch",
     author_email="dmellenbruch@outlook.com",
     license="MIT",
     packages=["ezpq"],
+    keywords = ['Parallel', 'Queue'],
     include_package_data=True,
     install_requires=[],
     extras_require={
