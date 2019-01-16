@@ -1,20 +1,21 @@
 # `ezpq`: an easy parallel queueing system.
 
-* [Background](#background)
-* [Overview](#overview)
-* [Features](#features)
-* [How to get it](#how-to-get-it)
-* [Quickstart](#quickstart)
-* [`ezpq.Queue`](#ezpqqueue)
-  * [`put`](#put)
-  * [`size`](#size)
-  * [`wait`](#wait)
-  * [`get`](#get)
-  * [`collect`](#collect)
-  * [`dispose`](#dispose)
-  * [`@decorator`](#decorator)
-* [`ezpq.Plot`](#ezpqplot)
-* [Notebook of Examples](#notebook-of-examples)
+* [`ezpq`: an easy parallel queueing system.](#ezpq-an-easy-parallel-queueing-system)
+  * [Background](#background)
+  * [Overview](#overview)
+  * [Features](#features)
+  * [How to get it](#how-to-get-it)
+  * [Quickstart](#quickstart)
+  * [`ezpq.Queue`](#ezpqqueue)
+    * [`put`](#put)
+    * [`size`](#size)
+    * [`wait`](#wait)
+    * [`get`](#get)
+    * [`collect`](#collect)
+    * [`dispose`](#dispose)
+    * [Decorator](#decorator)
+  * [`ezpq.Plot`](#ezpqplot)
+  * [Notebook of Examples](#notebook-of-examples)
 
 ## Background
 
@@ -61,6 +62,13 @@ To use the optional plotting features, install `pandas` and `plotnine`, or run..
 pip install ezpq[plot]
 ```
 
+Importing the `ezpq` module is straightforward, but an explicit import is necessary for the `ezpq.Plot` class due to the extra dependencies.
+
+```python
+import ezpq # imports ezpq.Queue and ezpq.Job
+import ezpq.Plot # imports ezpq.Plot, requiring pandas and plotnine.
+```
+
 ## Quickstart
 
 Suppose you wanted to speed up the following code, which has 10 inputs that each take exactly 1 second to run, and stores the output...
@@ -93,6 +101,8 @@ The above function should take ~10 seconds to execute; here is the output:
 Here is the same function, decorated with ` @ezpq.Queue() `, which will run the function 10 times in parallel with 5 workers:
 
 ```python
+import ezpq
+
 @ezpq.Queue(n_workers=5)
 def random_sleep(x, min=0, max=1):
     n = random.randint(min*1000, max*1000) / 1000
@@ -163,6 +173,8 @@ name|output|runtime
 The class `ezpq.Plot` uses data returned from an `ezpq.Queue` to produce a Gannt chart of the job runtimes. This feature introduces the only non-standard dependencies; you will need `pandas` for the data reshaping and `plotnine` for the visualizations.
 
 ```python
+import ezpq.Plot
+
 plt = ezpq.Plot(output).build()
 plt.save('docs/imgs/quickplot.png')
 plt
