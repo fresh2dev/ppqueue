@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+import logging as log
 
 class Job():
 
@@ -71,6 +72,10 @@ class Job():
         if self._inner_job is not None and hasattr(self._inner_job, 'exitcode'):
             return self._inner_job.exitcode
         return None
+
+    def _terminate(self):
+        if self._inner_job is not None:
+            self._inner_job.terminate()
 
     def _stop(self):
         '''Terminates an existing process. Does not work for threads.'''
