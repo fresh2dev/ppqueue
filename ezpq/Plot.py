@@ -1,10 +1,7 @@
-import pandas
-import plotnine as gg
-
 class Plot():
     """Functions to produce Gantt chart from completed job schedules."""
 
-    def __init__(self, jobs, color_by='priority', show_legend=True, bar_width=1, title=None):
+    def __init__(self, jobs, color_by='qid', show_legend=True, bar_width=1, title=None):
         """Some description.
 
         Args:
@@ -27,13 +24,13 @@ class Plot():
             self
         """
 
-        # import pandas
-
-        assert(color_by in ['priority', 'cancelled', 'exitcode', 'name', 'output'])
+        assert(color_by in ['qid', 'priority', 'cancelled', 'exitcode', 'name', 'output'])
         self.color_by = color_by
         self.show_legend = show_legend
         self.bar_width = bar_width
         self.title = title
+
+        import pandas
 
         df = pandas.DataFrame(jobs)
         min_time = df['submitted'].min()
@@ -59,7 +56,7 @@ class Plot():
             A theme object to be added to a plotnine.ggplot() object.
         """
 
-        # import plotnine as gg
+        import plotnine as gg
 
         assert(grid_axis in [None, 'x', 'y', 'both'])
         assert(grid_lines in [None, 'major', 'minor', 'both'])
@@ -90,10 +87,6 @@ class Plot():
                           axis_line = gg.element_line(color = "black"),
                           **grid_opt)
 
-    # def save(self, *args, **kwargs):
-    #     plt = self.show()
-    #     plt.save(*args, **kwargs)
-
     def build(self):
         """Produces a plot based on the data and options provided to a `ezpq.Plot()` object.
 
@@ -101,9 +94,9 @@ class Plot():
             The plot produced from plotnine.ggplot().
         """
 
-        # import plotnine as gg
+        import plotnine as gg
 
-        df2 = self.jobs_df.loc[:, ['id', self.color_by, 'submitted_offset', 'started_offset', 'ended_offset', 'processed_offset']].melt(id_vars=['id', self.color_by])
+        df2 = self.jobs_df.loc[:, set(['qid', 'id', self.color_by, 'submitted_offset', 'started_offset', 'ended_offset', 'processed_offset'])].melt(id_vars=set(['qid', 'id', self.color_by]))
 
         df_submit_start = df2[(df2['variable'] == 'submitted_offset') | (df2['variable'] == 'started_offset')]
         df_start_end = df2[(df2['variable'] == 'started_offset') | (df2['variable'] == 'ended_offset')]
@@ -122,4 +115,5 @@ class Plot():
                 gg.labs(**labs) + \
                 gg.labs(color=self.color_by) + \
                 self._plot_theme(grid_axis='x') + \
-                gg.scale_color_hue(h=.65)
+                gg.scale_color_hue(h=.65) + \
+                gg.facet_grid(facets='qid~')

@@ -30,7 +30,8 @@ class Job():
             ezpq.Job object
         """
 
-        self._id = None # assigned by the Mgr.
+        self._qid = None # automatically assigned during processing.
+        self._id = None # automatically assigned during processing.
         self.name = name
         self.timeout = timeout
         self.function = function
@@ -153,6 +154,7 @@ class Job():
     def to_dict(self):
         '''Returns a dictionary of the ezpq.Job object.'''
         return {
+            'qid':self._qid,
             'id':self._id,
             'name':self.name,
             'priority': self.priority,

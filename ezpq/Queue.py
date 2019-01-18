@@ -6,6 +6,7 @@ import os
 import csv
 import time
 import logging as log
+from uuid import uuid4
 
 class Queue():
 
@@ -50,7 +51,8 @@ class Queue():
                  auto_stop = False,
                  callback = None,
                  log_file = None,
-                 poll = 0.1):
+                 poll = 0.1,
+                 qid = None):
         """Implements a parallel queueing system.
 
         Args:
@@ -89,6 +91,10 @@ class Queue():
         assert(job_runner in (mp.Process, thread.Thread))
         assert(poll >= 0.01) # max 100 pulses per sec.
 
+        if qid is None:
+            self._qid = str(uuid4())[:8]
+        else:
+            self._qid = qid
         self._max_size = max_size
         self._n_submitted = 0
         self._n_completed = 0
@@ -111,10 +117,8 @@ class Queue():
 
         if self._job_runner is mp.Process:
             self._mpmanager = mp.Manager()
-            # self._output = self._mpmanager.list()
             self._output = self._mpmanager.dict()
         else:
-            # self._output = list()
             self._output = dict()
 
         log.debug('Initialized queue with {} workers.'.format(self._n_workers))
@@ -200,7 +204,7 @@ class Queue():
             job = self._q_working.get(k)
             if job is not None: job._stop()
 
-        if wait: self.wait(n=0)
+        if wait: self.wait()
 
     def clear(self):
         '''Clears the queue system components: waiting, working, completed.
@@ -208,13 +212,10 @@ class Queue():
         '''
         self.stop_all(wait=True)
 
-        # self._q_working = dict()
         self._q_working.clear()
         log.debug('Removed jobs.')
-        # self._output = dict()
-        self._output.clear() #[:] = []
+        self._output = None
         log.debug('Removed output.')
-        # self._q_completed = list()
         self._q_completed[:] = []
         log.debug('Removed completed.')
         self._n_submitted = 0
@@ -250,19 +251,10 @@ class Queue():
             self._stop()
         else:
             with self._lock:
-                # self._n_q_waiting = len(self._q_waiting)
-                # self._n_q_working = len(self._q_working)
-                # self._n_q_completed = len(self._q_completed)
 
                 for job_id, job in self._q_working.items():
                     if job.is_expired():
                         job._stop()
-
-                # get data out of the Manager list.
-                # output = {k:self._output.pop(k) for k in list(self._output.keys())}
-                # output = { x.pop('job_id'): x
-                #            for x in [self._output.pop() for _ in range(len(self._output))] }
-                # output = {x.pop('job_id'): x for x in self._output}
 
                 for job_id in list(self._q_working.keys()):
                     job = self._q_working[job_id]
@@ -271,7 +263,7 @@ class Queue():
                         job._join()
                         if not job._cancelled:
                             try:
-                                job_data = self._output.pop(job._id) # output.pop(job._id)
+                                job_data = self._output.pop(job._id)
                                 job._ended = job_data['_ended']
                                 job._output = job_data['_output']
                             except KeyError as ex:
@@ -288,7 +280,6 @@ class Queue():
 
                         log.debug("Completed job: '{}'".format(job._id))
                         if not self._auto_remove:
-                            # Queue._push_job(self._q_completed, job) # self._q_working.pop(job._id))
                             heappush(self._q_completed, (int(job.priority), job._submitted, job.to_dict()))
                             self._n_q_completed += 1
 
@@ -309,12 +300,6 @@ class Queue():
                     self._n_q_working += 1
                     self._start_job(job=job)
                     n_to_start -= 1
-
-                # self._n_q_waiting = len(self._q_waiting)
-                # self._n_q_working = len(self._q_working)
-                # self._n_q_completed = len(self._q_completed)
-
-            # log.debug("Pulse completed in: {}s; n_submitted={}; n_completed={}".format(round(time.time() - start, 4), self._n_submitted, self._n_completed))
 
     def size(self, waiting=False, working=False, completed=False):
         """Returns the number of jobs in the corresponding queue(s).
@@ -338,18 +323,12 @@ class Queue():
 
         size = 0
         
-        # n_waiting, n_working, n_completed = len(self._n_q_waiting), len(self._n_q_working), len(self._n_q_completed)
-
         if not any([waiting, working, completed]) or all([waiting, working, completed]):
-            # waiting, working, completed = (True, True, True)
             size = self._n_q_waiting + self._n_q_working + self._n_q_completed
         else:
             if waiting: size += self._n_q_waiting
             if working: size += self._n_q_working
             if completed: size += self._n_q_completed
-            # if waiting: size += len(self._q_waiting)
-            # if working: size += len(self._q_working)
-            # if completed: size += len(self._q_completed)
 
         return size
 
@@ -414,13 +393,10 @@ class Queue():
 
         return not self.is_busy()
 
-    def wait(self, n=0, poll=0.1, timeout=0):
+    def wait(self, poll=0.1, timeout=0, _tqdm=None):
         """Waits for jobs to be completed by the queue system.
 
         Args:
-            n: the number of jobs to wait for.
-                - Accepts: int
-                - Default: 0 (all jobs)
             poll: the time, in seconds, between checks.
                 - Accepts: float
                 - Default: 0.1
@@ -433,53 +409,39 @@ class Queue():
         """
 
         n_pending = self.size(waiting=True, working=True)
-
-        if n > 0:
-            n = min(n, n_pending)
-        else:
-            n = n_pending
-
-        n_remaining = (n_pending+n) - n_pending
-
-        start = time.time()
-        while n_remaining > 0 and (timeout==0 or time.time() - start < timeout):
-            time.sleep(poll)
-            # n_remaining = self.size(waiting=True, working=True) - (n_pending - n)
-            n_remaining = (self.size(waiting=True, working=True)+n) - n_pending
-
-        return n_remaining
-
-    def waitpb(self, n=0, poll=0.1, timeout=0, _tqdm=None):
-        """Waits for jobs to be completed by the queue system.
-
-        Args:
-            n: the number of jobs to wait for.
-                - Accepts: int
-                - Default: 0 (all jobs)
-            poll: the time, in seconds, between checks.
-                - Accepts: float
-                - Default: 0.1
-            timeout: when > 0, the maximum time to wait, in seconds. Otherwise, no limit.
-                - Accepts: float
-                - Default: 0 (unlimited)
-
-        Returns:
-            0 if the expected number of jobs completed. > 0 otherwise.
-        """
-
-        if _tqdm is None:
-            from tqdm.auto import tqdm
-            _tqdm = tqdm
-
-        n_pending = self.size(waiting=True, working=True)
-        # n_completed = self.n_completed()
-        # n_pending = self.n_submitted() - n_completed
-
-        print('n_pending: {}'.format(n_pending))
 
         if n_pending > 0:
             start = time.time()
-            total_diff = 0
+
+            while n_pending > 0 and (timeout==0 or time.time() - start < timeout):
+                time.sleep(poll)
+                n_pending = self.size(waiting=True, working=True)
+
+        return n_pending
+
+    def waitpb(self, poll=0.1, timeout=0, _tqdm=None):
+        """Waits for jobs to be completed by the queue system.
+
+        Args:
+            poll: the time, in seconds, between checks.
+                - Accepts: float
+                - Default: 0.1
+            timeout: when > 0, the maximum time to wait, in seconds. Otherwise, no limit.
+                - Accepts: float
+                - Default: 0 (unlimited)
+
+        Returns:
+            0 if the expected number of jobs completed. > 0 otherwise.
+        """
+
+        n_pending = self.size(waiting=True, working=True)
+
+        if n_pending > 0:
+            if _tqdm is None:
+                from tqdm.auto import tqdm
+                _tqdm = tqdm
+
+            start = time.time()
 
             with _tqdm(total=n_pending, unit='op') as pb:
                 while n_pending > 0 and (timeout==0 or time.time() - start < timeout):
@@ -506,7 +468,6 @@ class Queue():
             out = str(ex)
 
         _output.update({ _job._id: {'_ended':time.time(), '_output':out} })
-        # _output.append( {'job_id':_job._id, '_output':out, '_ended':time.time()} )
 
         if err:
             raise Exception(out)
@@ -518,9 +479,9 @@ class Queue():
 
         if job.args is not None:
             if not isinstance(job.args, list):
-                job_args['args'] = [job, self._output, job.args] #[job, self._output] + [job.args]
+                job_args['args'] = [job, self._output, job.args]
             else:
-                job_args['args'] = [job, self._output] + job.args #[job, self._output] + list(job.args)
+                job_args['args'] = [job, self._output] + job.args
 
         if job.kwargs is None:
             job_args['kwargs'] = dict()
@@ -537,7 +498,6 @@ class Queue():
 
         job._started = time.time()
         job._inner_job = j
-        # self._q_working.update({job._id: job})
 
         log.debug("Started job '{}'".format(job._id))
 
@@ -559,15 +519,12 @@ class Queue():
 
         job._submitted = time.time()
 
+        job._qid = self._qid
         self._n_submitted += 1
         job._id = self._n_submitted
 
         if job.name is None: job.name = job._id
 
-        # if self.is_started() and not self.is_busy():
-        #     self._start_job(job = job)
-        # else:
-        # Queue._push_job(self._q_waiting, job)
         heappush(self._q_waiting, (int(job.priority), job._submitted, job))
         self._n_q_waiting += 1 # important
         log.debug("Queued job: '{}'".format(job._id))
@@ -604,7 +561,7 @@ class Queue():
 
         return self.submit(job)
 
-    def map(self, function, iterable, args=None, kwargs=None, ordered=True, timeout=0, pb=False):
+    def map(self, function, iterable, args=None, kwargs=None, ordered=True, timeout=0, show_progress=False):
         
         assert hasattr(iterable, '__iter__')
 
@@ -629,7 +586,7 @@ class Queue():
         if ordered:
             self.start()
 
-        if pb is True:
+        if show_progress is True:
             from tqdm.auto import tqdm
             self.waitpb(_tqdm = tqdm)
         else:
@@ -668,6 +625,7 @@ class Queue():
         while True:
             if self.has_completed():
                 _,_,job = heappop(self._q_completed)
+                self._n_q_completed -= 1
                 # job = x.to_dict()
             elif (timeout > 0 or poll > 0) and (timeout <= 0 or time.time() - start < timeout):
                 time.sleep(poll)

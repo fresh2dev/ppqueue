@@ -62,13 +62,6 @@ To use the optional plotting features, install `pandas` and `plotnine`, or run..
 pip install ezpq[plot]
 ```
 
-Importing the `ezpq` module is straightforward, but an explicit import is necessary for the `ezpq.Plot` class due to the extra dependencies.
-
-```python
-import ezpq # imports ezpq.Queue and ezpq.Job
-import ezpq.Plot # imports ezpq.Plot, requiring pandas and plotnine.
-```
-
 ## Quickstart
 
 Suppose you wanted to speed up the following code, which has 10 inputs that each take exactly 1 second to run, and stores the output...
