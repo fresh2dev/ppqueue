@@ -4,7 +4,7 @@ import logging as log
 
 class Job():
 
-    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, timeout=0):
+    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0):
         """Defines what to run within a `ezpq.Queue`, and how to run it.
 
         Args:
@@ -33,6 +33,7 @@ class Job():
         self._qid = None # automatically assigned during processing.
         self._id = None # automatically assigned during processing.
         self.name = name
+        self.lane = lane
         self.timeout = timeout
         self.function = function
         self.args = args
@@ -154,10 +155,11 @@ class Job():
     def to_dict(self):
         '''Returns a dictionary of the ezpq.Job object.'''
         return {
-            'qid':self._qid,
-            'id':self._id,
-            'name':self.name,
+            'qid': self._qid,
+            'id': self._id,
+            'name': self.name,
             'priority': self.priority,
+            'lane': self.lane,
             'timeout':self.timeout,
             'function': self.function.__name__,
             'args': self.args,

@@ -106,6 +106,7 @@ class Queue():
         self._job_runner = job_runner
 
         self._q_waiting = list()
+        self._q_waiting_lanes = dict()
         self._q_working = dict()
         self._q_completed = list()
         self._n_q_waiting = 0
@@ -291,15 +292,23 @@ class Queue():
 
                         self._n_completed += 1
 
-                n_to_start = self.n_workers_free()
+                        if job.lane is not None:
+                            lane = self._q_waiting_lanes.get(job.lane)
+                            if lane is not None:
+                                _, _, job = heappop(lane)
+                                if len(lane) == 0:
+                                    del(self._q_waiting_lanes[job.lane])
+                                self._q_working[job._id] = job
+                                self._n_q_waiting -= 1
+                                self._n_q_working += 1
+                                self._start_job(job=job)
 
-                while n_to_start > 0 and self.has_waiting():
+                while self.has_waiting() and self.n_workers_free() > 0:
                     _, _, job = heappop(self._q_waiting)
                     self._q_working[job._id] = job
                     self._n_q_waiting -= 1
                     self._n_q_working += 1
                     self._start_job(job=job)
-                    n_to_start -= 1
 
     def size(self, waiting=False, working=False, completed=False):
         """Returns the number of jobs in the corresponding queue(s).
@@ -525,13 +534,23 @@ class Queue():
 
         if job.name is None: job.name = job._id
 
-        heappush(self._q_waiting, (int(job.priority), job._submitted, job))
-        self._n_q_waiting += 1 # important
+        if job.lane is not None:
+            lane = self._q_waiting_lanes.get(job.lane)
+            if lane is None:
+                lane = list()
+                self._q_waiting_lanes[job.lane] = lane
+                heappush(self._q_waiting, (int(job.priority), job._submitted, job))
+            else:
+                heappush(lane, (int(job.priority), job._submitted, job))
+        else:
+            heappush(self._q_waiting, (int(job.priority), job._submitted, job))
+
+        self._n_q_waiting += 1
         log.debug("Queued job: '{}'".format(job._id))
 
         return job._id
 
-    def put(self, function, args=None, kwargs=None, name=None, priority=100, timeout=0):
+    def put(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0):
         """Creates a ezpq.Job object with the given parameters, then submits it to the ezpq.Queue system.
 
         Args:
@@ -557,7 +576,7 @@ class Queue():
             The number of jobs submitted to the queue.
         """
 
-        job = ezpq.Job(function=function, args=args, kwargs=kwargs, name=name, priority=priority, timeout=timeout)
+        job = ezpq.Job(function=function, args=args, kwargs=kwargs, name=name, priority=priority, lane=lane, timeout=timeout)
 
         return self.submit(job)
 
