@@ -4,7 +4,7 @@ import logging as log
 
 class Job():
 
-    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0):
+    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0, suppress_errors=False):
         """Defines what to run within a `ezpq.Queue`, and how to run it.
 
         Args:
@@ -39,6 +39,7 @@ class Job():
         self.args = args
         self.kwargs = kwargs
         self.priority = priority
+        self._suppress_errors = suppress_errors
         self._inner_job = None
         self._cancelled = False
         self._submitted = None
@@ -46,6 +47,7 @@ class Job():
         self._ended = None
         self._processed = None
         self._output = None
+        self._exception = None
         self._callback = None
 
     def is_running(self):
@@ -172,5 +174,6 @@ class Job():
             'cancelled': self._cancelled,
             'runtime': self.run_time(),
             'output': self._output,
+            'exception': self._exception,
             'callback': self._callback
         }

@@ -267,9 +267,11 @@ class Queue():
                                 job_data = self._output.pop(job._id)
                                 job._ended = job_data['_ended']
                                 job._output = job_data['_output']
+                                job._exception = job_data['_exception']
                             except KeyError as ex:
                                 job._ended = time.time()
-                                job._output = 'No output for job {}; it may have exited unexpectedly.'.format(str(ex))
+                                job._output = None
+                                job._exception = Exception('No data for job; it may have exited unexpectedly.')
 
                         if self._callback is not None:
                             try:
@@ -468,18 +470,17 @@ class Queue():
     def _job_wrap(_job, _output, *args, **kwargs):
         '''Used internally to wrap a job, capture output and any exception.'''
         out = None
-        err = False
+        err = None
 
         try:
             out = _job.function(*args, **kwargs)
         except Exception as ex:
-            err = True
-            out = str(ex)
+            err = ex
 
-        _output.update({ _job._id: {'_ended':time.time(), '_output':out} })
+        _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': err} })
 
-        if err:
-            raise Exception(out)
+        if err is not None and not _job._suppress_errors:
+            raise err
 
     def _start_job(self, job):
         '''Internal; invokes jobs.'''
