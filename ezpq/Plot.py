@@ -1,3 +1,5 @@
+import logging as log
+
 class Plot():
     """Functions to produce Gantt chart from completed job schedules."""
 
@@ -23,7 +25,7 @@ class Plot():
         self.jobs_df = df
 
     @staticmethod
-    def _plot_theme(grid_axis='both', grid_lines='both'):
+    def _plot_theme(grid_axis='both', grid_lines='both', theme='bw'):
         """Internal function provides consistent theme across plots.
         Currently a slightly modified version of theme_bw() with configurable grid lines.
 
@@ -34,7 +36,9 @@ class Plot():
             grid_lines: controls whether major or minor grid lines are drawn
                 - Accepts: None, 'major', 'minor', 'both'
                 - Default: 'both'
-
+            theme:
+                - Accepts: 'bw', 'classic', 'gray', 'grey', 'seaborn', '538', 'dark', 'matplotlib', 'minimal', 'xkcd', 'light'
+                - Default: 'bw'
         Returns:
             A theme object to be added to a plotnine.ggplot() object.
         """
@@ -43,6 +47,7 @@ class Plot():
 
         assert(grid_axis in [None, 'x', 'y', 'both'])
         assert(grid_lines in [None, 'major', 'minor', 'both'])
+        assert(theme in ['bw', 'classic', 'gray', 'grey', 'seaborn', '538', 'dark', 'matplotlib', 'minimal', 'xkcd', 'light'])
 
         drop_grid = set()
 
@@ -65,12 +70,12 @@ class Plot():
         for x in drop_grid:
             grid_opt[x] = gg.element_blank()
 
-        return gg.theme_bw() + \
+        return getattr(gg, 'theme_'+theme)() + \
                 gg.theme(panel_border = gg.element_blank(),
                           axis_line = gg.element_line(color = "black"),
                           **grid_opt)
 
-    def build(self, color_by='qid', facet_by='qid', facet_scale='fixed', show_legend=True, bar_width=1, title=None):
+    def build(self, color_by='qid', facet_by='qid', facet_scale='fixed', show_legend=True, bar_width=1, title=None, color_pal=None, theme='bw'):
         """Produces a plot based on the data and options provided to a `ezpq.Plot()` object.
 
         Args:
@@ -92,6 +97,9 @@ class Plot():
             title: optional title to be drawn above the plot.
                 - Accepts: str, None
                 - Default: None
+            theme:
+                - Accepts: 'bw', 'classic', 'gray', 'grey', 'seaborn', '538', 'dark', 'matplotlib', 'minimal', 'xkcd', 'light'
+                - Default: 'bw'
         Returns:
             The plot produced from plotnine.ggplot().
         """
@@ -112,14 +120,26 @@ class Plot():
         if title is not None:
             labs['title'] = title
 
-        return gg.ggplot(gg.aes(x='value', y='id', group='factor(id)')) + \
-                gg.geom_line(df_submit_start, color='gray', size=bar_width, alpha=0.25) + \
-                gg.geom_line(df_start_end,
-                             gg.aes(color='factor({})'.format(color_by)),
-                             size=bar_width, show_legend=bool(show_legend)) + \
-                gg.geom_line(df_end_processed, color='gray', size=bar_width, alpha=0.25) + \
-                gg.labs(**labs) + \
-                gg.labs(color=color_by) + \
-                Plot._plot_theme(grid_axis='x') + \
-                gg.scale_color_hue(h=.65) + \
-                gg.facet_grid(facets='{}~'.format(facet_by), labeller='label_both', scales=facet_scale, as_table=True)
+        gg_obj = gg.ggplot(gg.aes(x='value', y='id', group='factor(id)')) + \
+                    gg.geom_line(df_submit_start, color='gray', size=bar_width, alpha=0.25) + \
+                    gg.geom_line(df_start_end,
+                                gg.aes(color='factor({})'.format(color_by)),
+                                size=bar_width, show_legend=bool(show_legend)) + \
+                    gg.geom_line(df_end_processed, color='gray', size=bar_width, alpha=0.25) + \
+                    gg.labs(**labs) + \
+                    gg.labs(color=color_by) + \
+                    Plot._plot_theme(grid_axis='x', theme=theme) + \
+                    gg.facet_grid(facets='{}~'.format(facet_by), labeller='label_both', scales=facet_scale, as_table=True)
+        
+        if color_pal is None or not isinstance(color_pal, list):
+            gg_obj += gg.scale_color_hue(h=.65)
+        else:
+            n_colors = self.jobs_df[color_by].unique().size
+
+            if len(color_pal) < n_colors:
+                log.warning('Insufficient number of colors; need at least ' + str(n_colors))
+                gg_obj += gg.scale_color_hue(h=.65)
+            else:
+                gg_obj += gg.scale_color_manual(color_pal[:n_colors])
+
+        return gg_obj
