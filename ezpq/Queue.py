@@ -96,6 +96,7 @@ class Queue():
             self._qid = str(uuid4())[:8]
         else:
             self._qid = qid
+        self.show_progress = show_progress
         self._max_size = max_size
         self._n_submitted = 0
         self._n_completed = 0
@@ -141,7 +142,7 @@ class Queue():
         def wrapped_f(iterable, *args, **kwargs):
             for x in iterable:
                 self.put(function=fun, args=[x]+list(args), kwargs=kwargs)
-            self.wait()
+            self.wait(show_progress = self.show_progress)
             job_data = self.collect()
             self.dispose()
             return job_data
@@ -407,7 +408,7 @@ class Queue():
 
         return not self.is_busy()
 
-    def wait(self, poll=0.1, timeout=0, _tqdm=None):
+    def wait(self, poll=0.1, timeout=0, show_progress=False):
         """Waits for jobs to be completed by the queue system.
 
         Args:
@@ -422,18 +423,23 @@ class Queue():
             0 if the expected number of jobs completed. > 0 otherwise.
         """
 
-        n_pending = self.size(waiting=True, working=True)
+        n_pending = 0
 
-        if n_pending > 0:
-            start = time.time()
+        if show_progress:
+            n_pending = self.waitpb(poll=poll, timeout=timeout)
+        else:
+            n_pending = self.size(waiting=True, working=True)
 
-            while n_pending > 0 and (timeout==0 or time.time() - start < timeout):
-                time.sleep(poll)
-                n_pending = self.size(waiting=True, working=True)
+            if n_pending > 0:
+                start = time.time()
+
+                while n_pending > 0 and (timeout==0 or time.time() - start < timeout):
+                    time.sleep(poll)
+                    n_pending = self.size(waiting=True, working=True)
 
         return n_pending
 
-    def waitpb(self, poll=0.1, timeout=0, _tqdm=None):
+    def waitpb(self, poll=0.1, timeout=0):
         """Waits for jobs to be completed by the queue system.
 
         Args:
@@ -451,13 +457,12 @@ class Queue():
         n_pending = self.size(waiting=True, working=True)
 
         if n_pending > 0:
-            if _tqdm is None:
-                from tqdm.auto import tqdm
-                _tqdm = tqdm
+            
+            from tqdm.auto import tqdm
 
             start = time.time()
 
-            with _tqdm(total=n_pending, unit='op') as pb:
+            with tqdm(total=n_pending, unit='op') as pb:
                 while n_pending > 0 and (timeout==0 or time.time() - start < timeout):
                     time.sleep(poll)
                     tmp = self.size(waiting=True, working=True)
@@ -556,7 +561,7 @@ class Queue():
 
         return job._id
 
-    def put(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0):
+    def put(self, *args, **kwargs): # function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0):
         """Creates a ezpq.Job object with the given parameters, then submits it to the ezpq.Queue system.
 
         Args:
@@ -582,11 +587,11 @@ class Queue():
             The number of jobs submitted to the queue.
         """
 
-        job = ezpq.Job(function=function, args=args, kwargs=kwargs, name=name, priority=priority, lane=lane, timeout=timeout)
+        job = ezpq.Job(*args, **kwargs) #function=function, args=args, kwargs=kwargs, name=name, priority=priority, lane=lane, timeout=timeout)
 
         return self.submit(job)
 
-    def map(self, function, iterable, args=None, kwargs=None, ordered=True, timeout=0, show_progress=False):
+    def map(self, function, iterable, args=None, kwargs=None, timeout=0, show_progress=False):
         
         assert hasattr(iterable, '__iter__')
 
@@ -598,24 +603,13 @@ class Queue():
             args = [None]
         else:
             args = [None] + list(args)
-        
-        if ordered and self.is_started():
-            self._stop()
 
-        for i,x in enumerate(iterable):
+        for x in iterable:
             args[0] = x
-            job = ezpq.Job(function=function, args=list(args), kwargs=kwargs, priority=1, timeout=timeout)
-            if ordered: job.priority = i
+            job = ezpq.Job(function=function, args=list(args), kwargs=kwargs, timeout=timeout)
             self.submit(job)
-    
-        if ordered:
-            self.start()
 
-        if show_progress is True:
-            from tqdm.auto import tqdm
-            self.waitpb(_tqdm = tqdm)
-        else:
-            self.wait()
+        self.wait(show_progress=show_progress)
 
         return self.collect()
 
