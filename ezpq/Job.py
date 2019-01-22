@@ -47,6 +47,7 @@ class Job():
         self._ended = None
         self._processed = None
         self._output = None
+        self._exitcode = None
         self._exception = None
         self._callback = None
 
@@ -75,6 +76,8 @@ class Job():
         '''Returns the exit code of the inner job. Only works for processes, not threads.'''
         if self._inner_job is not None and hasattr(self._inner_job, 'exitcode'):
             return self._inner_job.exitcode
+        else:
+            return self._exitcode
         return None
 
     def _terminate(self):

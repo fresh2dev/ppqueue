@@ -43,28 +43,29 @@ class Queue():
 
 
     def __init__(self,
-                 job_runner = mp.Process,
                  n_workers = mp.cpu_count(),
                  max_size = 0,
+                 job_runner = mp.Process,
                  auto_remove = False,
                  auto_start = True,
                  auto_stop = False,
                  callback = None,
                  log_file = None,
                  poll = 0.1,
+                 show_progress = False,
                  qid = None):
         """Implements a parallel queueing system.
 
         Args:
-            job_runner: the class to use to invoke new jobs.
-                - Accepts: multiprocessing.Process, threading.Thread
-                - Default: multiprocessing.Process
             n_workers: the max number of concurrent jobs.
                 - Accepts: int
                 - Default: cpu_count()
             max_size: when > 0, will throw an exception the number of enqueued jobs exceeds this value. Otherwise, no limit.
                 - Accepts: int
                 - Default: 0 (unlimited)
+            job_runner: the class to use to invoke new jobs.
+                - Accepts: multiprocessing.Process, threading.Thread
+                - Default: multiprocessing.Process
             auto_remove: controls whether jobs are discarded of after completion.
                 - Accepts: bool
                 - Default: False
@@ -268,10 +269,12 @@ class Queue():
                                 job._ended = job_data['_ended']
                                 job._output = job_data['_output']
                                 job._exception = job_data['_exception']
+                                job._exitcode = job_data['_exitcode']
                             except KeyError as ex:
                                 job._ended = time.time()
                                 job._output = None
                                 job._exception = Exception('No data for job; it may have exited unexpectedly.')
+                                job._exitcode = 1
 
                         if self._callback is not None:
                             try:
@@ -471,13 +474,15 @@ class Queue():
         '''Used internally to wrap a job, capture output and any exception.'''
         out = None
         err = None
+        code = 0
 
         try:
             out = _job.function(*args, **kwargs)
         except Exception as ex:
             err = ex
+            code = -1
 
-        _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': err} })
+        _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': err, '_exitcode': code} })
 
         if err is not None and not _job._suppress_errors:
             raise err
