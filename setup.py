@@ -1,5 +1,3 @@
-# https://realpython.com/pypi-publish-python-package
-
 import pathlib
 from setuptools import setup
 
@@ -7,16 +5,16 @@ from setuptools import setup
 HERE = pathlib.Path(__file__).parent
 
 # The text of the README file
-README = (HERE / "README.md").read_text()
+README = (HERE / "README.rst").read_text()
 
 
 setup(
     name="ezpq",
-    version="0.1.0",
-    download_url = 'https://github.com/dm3ll3n/ezpq/archive/0.1.0.tar.gz',
+    version="0.2.0",
+    #download_url = 'https://github.com/dm3ll3n/ezpq/releases/download/0.2.0/ezpq-0.2.0.tar.gz',
     description="an easy parallel queueing system",
     long_description=README,
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/x-rst',
     url="https://www.github.com/dm3ll3n/ezpq",
     author="Donald Mellenbruch",
     author_email="dmellenbruch@outlook.com",

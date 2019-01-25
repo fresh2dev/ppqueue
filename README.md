@@ -1,8 +1,24 @@
-`ezpq`: an easy parallel queueing system.
-================
+# `ezpq`: an easy parallel queueing system.
 
-Read this on [GitHub](https://github.com/dm3ll3n/ezpq) or [my
-site](https://www.donaldmellenbruch.com/project/ezpq/).
+Read this on [GitHub](https://github.com/dm3ll3n/ezpq) or [my site](https://www.donaldmellenbruch.com/project/ezpq/).
+
+* [`ezpq`: an easy parallel queueing system.](#ezpq-an-easy-parallel-queueing-system)
+  * [Overview](#overview)
+  * [Features](#features)
+  * [How to get it](#how-to-get-it)
+  * [Quickstart](#quickstart)
+  * [ezpq.Queue](#ezpqqueue)
+  * [ezpq.Job](#ezpqjob)
+    * [put](#put)
+    * [size](#size)
+    * [wait](#wait)
+    * [get](#get)
+    * [collect](#collect)
+    * [map](#map)
+    * [dispose](#dispose)
+  * [Synchronous Lanes](#synchronous-lanes)
+  * [ezpq.Plot](#ezpqplot)
+  * [More Examples](#more-examples)
 
 ## Overview
 
@@ -19,21 +35,21 @@ also run jobs with `threading.Thread`.
 
 ## Features
 
-  - Simple interface; pure Python.
-  - No required dependencies outside of standard library.
-  - Optional integration with [`tqdm`](https://github.com/tqdm/tqdm)
+-   Simple interface; pure Python.
+-   No required dependencies outside of standard library.
+-   Optional integration with [`tqdm`](https://github.com/tqdm/tqdm)
     progress bars.
-  - Compatible with Python 2 & 3.
-  - Cross platform with MacOS, Linux, and Windows.
-  - Data remains in-memory.
-  - Priority Queueing, both in and out and within lanes.
-  - Synchronous lanes allow dependent jobs to execute in the desired
+-   Compatible with Python 2 & 3.
+-   Cross platform with MacOS, Linux, and Windows.
+-   Data remains in-memory.
+-   Priority Queueing, both in and out and within lanes.
+-   Synchronous lanes allow dependent jobs to execute in the desired
     order.
-  - Easily switch from processes to threads.
-  - Automatic handling of output.
-  - Rich job details, easily viewed as pandas dataframe.
-  - Built-in logging to CSV.
-  - Customizable visualizations of queue operations.
+-   Easily switch from processes to threads.
+-   Automatic handling of output.
+-   Rich job details, easily viewed as pandas dataframe.
+-   Built-in logging to CSV.
+-   Customizable visualizations of queue operations.
 
 ## How to get it
 
@@ -74,7 +90,7 @@ end = time.time()
 print('> Runtime: ' + str(end - start))
 ```
 
-    ## '> Runtime: 58.9256477355957'
+    ## '> Runtime: 58.932034969329834'
 
 Here is the function ran in parallel with an `ezpq` Queue of 6 workers.
 Thus, the runtime of the above operation will be reduced from ~60s to
@@ -82,19 +98,11 @@ Thus, the runtime of the above operation will be reduced from ~60s to
 
 ``` python
 start = time.time()
-```
-
-``` python
 with ezpq.Queue(6) as Q:
   output = Q.map(random_sleep, range(60))
-```
-
-``` python
 end = time.time()
 print('> Runtime: ' + str(end - start))
 ```
-
-    ## '> Runtime: 11.134793758392334'
 
 Here is the same scenario, using the `@ezpq.Queue` decorator.
 
@@ -127,10 +135,10 @@ job, along with its output, and exit code.
 print( output[0] )
 ```
 
-    ## {'args': 0,
+    ## {'args': [0],
     ##  'callback': None,
     ##  'cancelled': False,
-    ##  'ended': datetime.datetime(2019, 1, 25, 16, 21, 2, 691459),
+    ##  'ended': datetime.datetime(2019, 1, 28, 17, 45, 29, 943860),
     ##  'exception': None,
     ##  'exitcode': 0,
     ##  'function': 'random_sleep',
@@ -140,11 +148,11 @@ print( output[0] )
     ##  'name': 1,
     ##  'output': 1.3444218515250481,
     ##  'priority': 100,
-    ##  'processed': datetime.datetime(2019, 1, 25, 16, 21, 2, 745552),
-    ##  'qid': 'e2c223f4',
-    ##  'runtime': 1.3498365879058838,
-    ##  'started': datetime.datetime(2019, 1, 25, 16, 21, 1, 341623),
-    ##  'submitted': datetime.datetime(2019, 1, 25, 16, 21, 1, 236632),
+    ##  'processed': datetime.datetime(2019, 1, 28, 17, 45, 29, 998175),
+    ##  'qid': 'd6eaaf93',
+    ##  'runtime': 1.3502492904663086,
+    ##  'started': datetime.datetime(2019, 1, 28, 17, 45, 28, 593611),
+    ##  'submitted': datetime.datetime(2019, 1, 28, 17, 45, 28, 489300),
     ##  'timeout': 0}
 
 Easily convert output to a `pandas` dataframe:
@@ -156,11 +164,11 @@ print( df.head()[['id', 'output', 'runtime', 'exitcode']] )
 ```
 
     ##    id    output   runtime  exitcode
-    ## 0   1  1.344422  1.349837         0
-    ## 1   2  0.634364  0.638510         0
-    ## 2   3  1.456034  1.460064         0
-    ## 3   4  0.737965  0.740669         0
-    ## 4   5  0.736048  0.739299         0
+    ## 0   1  1.344422  1.350249         0
+    ## 1   2  0.634364  0.638975         0
+    ## 2   3  1.456034  1.460431         0
+    ## 3   4  0.737965  0.742028         0
+    ## 4   5  0.736048  0.740672         0
 
 Use `ezpq.Plot` to generate a Gannt chart of the job timings.
 
@@ -171,7 +179,7 @@ plt.save('docs/imgs/quickstart.png')
 
 ![](docs/imgs/quickstart.png)
 
-## `ezpq.Queue`
+## ezpq.Queue
 
 The `Queue` class implements the queueing system, which is itself a
 3-part system composed of the:
@@ -180,7 +188,7 @@ The `Queue` class implements the queueing system, which is itself a
 2.  working table
 3.  completed queue
 
-<!-- end list -->
+<!-- -->
 
     ## Help on function __init__ in module ezpq.Queue:
     ## 
@@ -221,7 +229,7 @@ The `Queue` class implements the queueing system, which is itself a
     ## 
     ## None
 
-## `ezpq.Job`
+## ezpq.Job
 
 A `ezpq` job defines the function to run. It is passed to an `ezpq`
 queue with a call to `submit()`.
@@ -270,7 +278,7 @@ with ezpq.Queue(6) as Q:
 
 ![](docs/imgs/submit.png)
 
-### `put`
+### put
 
 The `put` method creates a job and submits it to an `ezpq` queue. All of
 its arguments are passed to `ezpq.Job()`.
@@ -283,7 +291,7 @@ with ezpq.Queue(6) as Q:
     output = Q.collect()
 ```
 
-### `size`
+### size
 
 `size()` returns a count of all items across all three queue components.
 It accepts three boolean parameters, `waiting`, `working`, and
@@ -321,14 +329,14 @@ with ezpq.Queue(6) as Q:
     ## 'Total: 60; Waiting: 34; Working: 6; Completed: 20'
     ## 'Total: 60; Waiting: 31; Working: 6; Completed: 23'
     ## 'Total: 60; Waiting: 24; Working: 6; Completed: 30'
-    ## 'Total: 60; Waiting: 18; Working: 6; Completed: 36'
-    ## 'Total: 60; Waiting: 12; Working: 6; Completed: 42'
+    ## 'Total: 60; Waiting: 17; Working: 6; Completed: 37'
+    ## 'Total: 60; Waiting: 11; Working: 6; Completed: 43'
     ## 'Total: 60; Waiting: 6; Working: 6; Completed: 48'
-    ## 'Total: 60; Waiting: 1; Working: 6; Completed: 53'
+    ## 'Total: 60; Waiting: 0; Working: 5; Completed: 55'
     ## 'Total: 60; Waiting: 0; Working: 1; Completed: 59'
     ## 'Total: 60; Waiting: 0; Working: 0; Completed: 60'
 
-### `wait`
+### wait
 
 The `wait()` method will block execution until all jobs complete. It
 also accepts a `timeout` parameter, given in seconds. The return value
@@ -342,7 +350,7 @@ waiting. This is equivalent to a call to `waitpb()`.
 
 ![](docs/imgs/tqdm.gif)
 
-### `get`
+### get
 
 `get()` retrieves and deletes (“pop”) the highest priority job from the
 completed queue, if one is available. If the completed queue is empty,
@@ -358,12 +366,12 @@ with ezpq.Queue(6) as Q:
     for x in range(n_inputs):
         Q.put(random_sleep, args=x)
         
-    # repeatedly `get()` queue is empty.
+    # repeatedly `get()` until queue is empty.
     for i in range(n_inputs):
         output[i] = Q.get(poll=0.1)
 ```
 
-### `collect`
+### collect
 
 `collect()` is similar to `get()`, but it will return a list of *all*
 completed jobs and clear the completed queue. It does not support the
@@ -387,23 +395,24 @@ with ezpq.Queue(6) as Q:
     ## 'Queue size after: 0'
     ## 'Output size: 60'
 
-### `map`
+### map
 
 `map` encapsulates the logic of `put`, `wait`, and `collect` in one
 call. Include `show_progress=True` to get output `tqdm` progress bar.
 
 ![](docs/imgs/tqdm_map.gif)
 
-### `dispose`
+### dispose
 
 The queueing operations performed by `ezpq.Queue` are performed on a
 periodic basis. By default, the `poll` parameter for a Queue is `0.1`
 seconds. This “pulse” thread will continue firing until the Queue is
 disposed of.
 
-In the previous examples, use of the context manager (`with ezpq.Queue()
-as Q:`) results in automatic disposal. If not using the context manager
-(or decorator), clean up after yourself with `dispose()`.
+In the previous examples, use of the context manager
+(`with ezpq.Queue() as Q:`) results in automatic disposal. If not using
+the context manager (or decorator), clean up after yourself with
+`dispose()`.
 
 ## Synchronous Lanes
 
@@ -418,7 +427,7 @@ In the above graphic, notice how same-colored bars never overlap. These
 bars represent jobs that are in the same lane, which executed
 synchronously.
 
-## `ezpq.Plot`
+## ezpq.Plot
 
 The `Plot` class is used to visualize the wait, start, and end times for
 each job that entered the queueing system. The class is initialized with

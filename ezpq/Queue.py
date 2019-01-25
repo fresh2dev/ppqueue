@@ -481,20 +481,21 @@ class Queue():
     def _job_wrap(_job, _output, *args, **kwargs):
         '''Used internally to wrap a job, capture output and any exception.'''
         out = None
-        ex = None
+        ex_obj = None
         ex_msg = None
         code = 0
 
         try:
             out = _job.function(*args, **kwargs)
         except Exception as ex:
-            ex_msg = traceback.format_exc() #ex
+            ex_obj = ex
+            ex_msg = traceback.format_exc()
             code = -1
 
         _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': ex_msg, '_exitcode': code} })
 
-        if ex is not None and not _job._suppress_errors:
-            raise ex
+        if ex_obj is not None and not _job._suppress_errors:
+            raise ex_obj
 
     def _start_job(self, job):
         '''Internal; invokes jobs.'''
@@ -502,10 +503,10 @@ class Queue():
         job_args = dict()
 
         if job.args is not None:
-            if not isinstance(job.args, list):
-                job_args['args'] = [job, self._output, job.args]
-            else:
-                job_args['args'] = [job, self._output] + job.args
+            # if not isinstance(job.args, list):
+            #     job_args['args'] = [job, self._output, job.args]
+            # else:
+            job_args['args'] = [job, self._output] + job.args
 
         if job.kwargs is None:
             job_args['kwargs'] = dict()

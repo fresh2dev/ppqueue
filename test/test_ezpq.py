@@ -2,6 +2,7 @@
 import unittest
 from multiprocessing import Process
 from threading import Thread
+import random
 
 from _context import ezpq
 
@@ -12,14 +13,16 @@ class TestEZPQ(unittest.TestCase):
 
     def setUp(self):
         self.Q = ezpq.Queue(job_runner=Process, auto_start=True, n_workers=5)
-        self.input = tuple(range(100))
+        in_list = list(range(100))
+        random.shuffle(in_list)
+        self.input = tuple(in_list)
 
     def test_priority(self):
         self.Q._stop()
         
-        for x in self.input:
+        for i,x in enumerate(self.input):
             self.Q.put(function=return_me, args=x,
-                        priority=-x) # should result in reversed inputs.
+                        priority=-i) # should result in reversed inputs.
         
         self.Q.start()
         self.Q.wait()

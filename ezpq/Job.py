@@ -39,8 +39,19 @@ class Job():
         self.lane = lane
         self.timeout = timeout
         self.function = function
-        self.args = args
-        self.kwargs = kwargs
+        
+        if args is None:
+            self.args = None
+        elif not hasattr(args, '__iter__'):
+            self.args = [args]
+        else:
+            self.args = list(args)
+        
+        if kwargs is None:
+            self.kwargs = None
+        else:
+            self.kwargs = dict(kwargs)
+
         self.priority = priority
         self._suppress_errors = suppress_errors
         self._inner_job = None
