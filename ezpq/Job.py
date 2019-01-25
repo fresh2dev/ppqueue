@@ -22,6 +22,9 @@ class Job():
             priority: priority value to assign. Lower values get processed sooner.
                 - Accepts: int
                 - Default: 100
+            lane: a sequential lane to place the job in. if it does not already exist, it will be created.
+                - Accepts: int, str; any hashable object
+                - Default: None; no lanes.
             timeout: When > 0, if this value (in seconds) is exceeded, the job is terminated. Otherwise, no limit enforced.
                 - Accepts: float
                 - Default: 0 (unlimited)

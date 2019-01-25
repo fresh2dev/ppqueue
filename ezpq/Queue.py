@@ -7,6 +7,7 @@ import csv
 import time
 import logging as log
 from uuid import uuid4
+import traceback
 
 class Queue():
 
@@ -294,9 +295,8 @@ class Queue():
                             Queue.log_csv(job=job.to_dict(), path=self._log_file)
 
                         del(self._q_working[job_id])
-                        self._n_q_working -= 1
-
                         self._n_completed += 1
+                        self._n_q_working -= 1
 
                         if job.lane is not None:
                             lane = self._q_waiting_lanes.get(job.lane)
@@ -305,15 +305,15 @@ class Queue():
                                 if len(lane) == 0:
                                     del(self._q_waiting_lanes[job.lane])
                                 self._q_working[job._id] = job
-                                self._n_q_waiting -= 1
                                 self._n_q_working += 1
+                                self._n_q_waiting -= 1
                                 self._start_job(job=job)
 
                 while self.has_waiting() and self.n_workers_free() > 0:
                     _, _, job = heappop(self._q_waiting)
                     self._q_working[job._id] = job
-                    self._n_q_waiting -= 1
                     self._n_q_working += 1
+                    self._n_q_waiting -= 1
                     self._start_job(job=job)
 
     def size(self, waiting=False, working=False, completed=False):
@@ -418,6 +418,9 @@ class Queue():
             timeout: when > 0, the maximum time to wait, in seconds. Otherwise, no limit.
                 - Accepts: float
                 - Default: 0 (unlimited)
+            show_progress: show `tqdm` progress bar; (pass args to `waitpb`)
+                - Accepts: bool
+                - Default: False
 
         Returns:
             0 if the expected number of jobs completed. > 0 otherwise.
@@ -478,19 +481,20 @@ class Queue():
     def _job_wrap(_job, _output, *args, **kwargs):
         '''Used internally to wrap a job, capture output and any exception.'''
         out = None
-        err = None
+        ex = None
+        ex_msg = None
         code = 0
 
         try:
             out = _job.function(*args, **kwargs)
         except Exception as ex:
-            err = ex
+            ex_msg = traceback.format_exc() #ex
             code = -1
 
-        _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': err, '_exitcode': code} })
+        _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': ex_msg, '_exitcode': code} })
 
-        if err is not None and not _job._suppress_errors:
-            raise err
+        if ex is not None and not _job._suppress_errors:
+            raise ex
 
     def _start_job(self, job):
         '''Internal; invokes jobs.'''
@@ -562,30 +566,8 @@ class Queue():
         return job._id
 
     def put(self, *args, **kwargs): # function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0):
-        """Creates a ezpq.Job object with the given parameters, then submits it to the ezpq.Queue system.
-
-        Args:
-            function: the function to run.
-                - Accepts: function object
-            args: optional positional arguments to pass to the function.
-                - Accepts: list, tuple
-                - Default: None
-            kwargs: optional keyword arguments to pass to the function.
-                - Accepts: dict
-                - Default: None
-            name: optional name to give to the job. Does not have to be unique.
-                - Accepts: str
-                - Default: None; assumes same name as job id.
-            priority: priority value to assign. Lower values get processed sooner.
-                - Accepts: int
-                - Default: 100
-            timeout: When > 0, if this value (in seconds) is exceeded, the job is terminated. Otherwise, no limit enforced.
-                - Accepts: float
-                - Default: 0 (unlimited)
-
-        Returns:
-            The number of jobs submitted to the queue.
-        """
+        """Creates a job and submits it to an ezpq queue.
+        see `help(ezpq.Job.__init__)`"""
 
         job = ezpq.Job(*args, **kwargs) #function=function, args=args, kwargs=kwargs, name=name, priority=priority, lane=lane, timeout=timeout)
 
