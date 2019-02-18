@@ -38,9 +38,9 @@ class Queue():
                 self.is_running = True
 
         def stop(self):
-            if self.is_running:
-                self._timer.cancel()
-                self.is_running = False
+            self.is_running = False
+            self._timer.cancel()
+            # self._timer.join()
 
 
     def __init__(self,
@@ -113,8 +113,8 @@ class Queue():
         self._q_working = dict()
         self._q_completed = list()
         self._n_q_waiting = 0
-        self._n_q_working = 0
-        self._n_q_completed = 0
+        # self._n_q_working = 0
+        # self._n_q_completed = 0
 
         self._auto_remove = auto_remove
         self._mpmanager = None
@@ -129,6 +129,7 @@ class Queue():
 
         self._poll = poll
         self._ticker = Queue.RepeatedTimer(interval=self._poll, function=self._pulse)
+        self.is_running = False
         if auto_start is True:
             self.start()
         self._auto_stop = auto_stop
@@ -137,8 +138,7 @@ class Queue():
 
     def __call__(self, fun, *args, **kwargs):
         '''Decorator guided by http://scottlobdell.me/2015/04/decorators-arguments-python/'''
-        if not self.is_started():
-            self.start()
+        self.start()
 
         def wrapped_f(iterable, *args, **kwargs):
             for x in iterable:
@@ -181,55 +181,105 @@ class Queue():
         return -1
 
     def __del__(self):
-        self.dispose()
+        if self.is_running:
+            self.dispose()
 
     def start(self):
         '''Starts the queue system pulse.'''
+        log.debug('Starting pulse.')
         self._ticker.start()
+        self.is_running = True
 
     def _stop(self):
         '''Stops the queue system pulse.'''
-        if self._ticker is not None:
-            self._ticker.stop()
-            log.debug('Stopped pulse.')
+        log.debug('Stopping pulse.')
+        self._ticker.stop()
+        self.is_running = False
 
     def dispose(self):
         '''Clears all output and stops the queue system pulse.'''
-        with self._lock:
-            self.clear()
-            self._stop()
-            if self._mpmanager is not None:
-                self._mpmanager.shutdown()
+        log.debug('Disposing')
 
-    def stop_all(self, wait=False):
-        '''Stops all jobs in the working dictionary.'''
-        keys = list(self._q_working.keys())
-        for k in keys:
-            job = self._q_working.get(k)
-            if job is not None: job._stop()
-
-        if wait: self.wait()
-
-    def clear(self):
-        '''Clears the queue system components: waiting, working, completed.
-        Also resets the counters.
-        '''
         self.stop_all(wait=True)
 
-        self._q_working.clear()
+        self._stop()
+
+        # self._q_working.clear()
         log.debug('Removed jobs.')
         self._output = None
         log.debug('Removed output.')
-        self._q_completed[:] = []
+        self._q_completed.clear() # [:] = []
         log.debug('Removed completed.')
+        # self._n_q_working = 0
         self._n_submitted = 0
         self._n_completed = 0
         log.debug('Reset counters.')
+        
+        if self._mpmanager is not None:
+            self._mpmanager.shutdown()
+
+    def clear_waiting(self):
+        log.debug('Clearing waiting queue')
+        with self._lock:
+            for _ in range(len(self._q_waiting)):
+                _, _, job = heappop(self._q_waiting)
+                job._cancelled = True
+                job._processed = time.time()
+                if not self._auto_remove:
+                    heappush(self._q_completed, (int(job.priority), job._submitted, job.to_dict()))
+                self._n_q_waiting -= 1
+
+            keys = list(self._q_waiting_lanes.keys())
+            for k in keys:
+                lane_jobs = self._q_waiting_lanes.get(k)
+                for _ in range(len(lane_jobs)):
+                    _, _, job = heappop(lane_jobs)
+                    job._cancelled = True
+                    job._processed = time.time()
+                    if not self._auto_remove:
+                        heappush(self._q_completed, (int(job.priority), job._submitted, job.to_dict()))
+                    self._n_q_waiting -= 1
+                del(self._q_waiting_lanes[k])
+
+    def stop_all(self, wait=True):
+        '''Stops working jobs and clears waiting jobs.'''
+
+        self.clear_waiting()
+
+        keys = list(self._q_working.keys())
+        for k in keys:
+            job = self._q_working.get(k)
+            if job is not None:
+                job._stop()
+
+        if wait:
+            self.wait()
+
+    # def clear(self):
+    #     '''Clears the queue system components: waiting, working, completed.
+    #     Also resets the counters.
+    #     '''
+    #     self.clear_waiting()
+    #     self.stop_all(wait=True)
+
+    #     with self._lock:
+    #         # self._q_working.clear()
+    #         log.debug('Removed jobs.')
+    #         self._output = None
+    #         log.debug('Removed output.')
+    #         self._q_completed.clear() # [:] = []
+    #         log.debug('Removed completed.')
+    #         # self._n_q_working = 0
+    #         self._n_submitted = 0
+    #         self._n_completed = 0
+    #         log.debug('Reset counters.')
 
     def __enter__(self):
+        log.debug('Entered context manager')
         return self
 
     def __exit__(self, *args):
+        log.debug('Exiting context manager')
         self.dispose()
 
     def n_submitted(self):
@@ -247,74 +297,100 @@ class Queue():
     def _pulse(self):
         '''Used internally; manages the queue system operations.'''
 
-        start = time.time()
+        # locked = self._lock.acquire(blocking=False)
 
-        if self._lock.locked():
-            log.warning('Pulse already running.') #' If you see this repeatedly, consider increasing the value of "poll", or removing a slow callback.')
-        elif self._auto_stop and not self.has_work():
-            self._stop()
-        else:
-            with self._lock:
+        with self._lock:
+            try:
+                # if not locked: # self._lock.locked():
+                #     log.debug('Thread already locked.') #' If you see this repeatedly, consider increasing the value of "poll", or removing a slow callback.')
+                # else:
+                if self._auto_stop and len(self._q_working) == 0 and self._n_q_waiting == 0: # self.size(waiting=True, working=True) == 0:
+                    self._stop()
+                else:
+                    for job_id, job in self._q_working.items():
+                        if job.is_expired():
+                            job._stop()
 
-                for job_id, job in self._q_working.items():
-                    if job.is_expired():
-                        job._stop()
+                    for job_id in list(self._q_working.keys()):
+                        job = self._q_working[job_id]
 
-                for job_id in list(self._q_working.keys()):
-                    job = self._q_working[job_id]
+                        if not job.is_running() and not job.is_processed():
+                            job._join()
+                            if not job._cancelled:
+                                try:
+                                    job_data = self._output.pop(job._id)
+                                    job._ended = job_data['_ended']
+                                    job._output = job_data['_output']
+                                    job._exitcode = job_data['_exitcode']
+                                    job._exception = job_data['_exception']
+                                except KeyError as ex:
+                                    job._ended = time.time()
+                                    job._output = None
+                                    job._exitcode = 1
+                                    job._exception = Exception('{}\n\nNo data for job; it may have exited unexpectedly.'.format(str(ex)))
 
-                    if not job.is_running() and not job.is_processed():
-                        job._join()
-                        if not job._cancelled:
-                            try:
-                                job_data = self._output.pop(job._id)
-                                job._ended = job_data['_ended']
-                                job._output = job_data['_output']
-                                job._exception = job_data['_exception']
-                                job._exitcode = job_data['_exitcode']
-                            except KeyError as ex:
-                                job._ended = time.time()
-                                job._output = None
-                                job._exception = Exception('No data for job; it may have exited unexpectedly.')
-                                job._exitcode = 1
+                            if self._callback is not None:
+                                try:
+                                    job._callback = self._callback(job.to_dict())
+                                except Exception as ex:
+                                    job._callback = str(ex)
 
-                        if self._callback is not None:
-                            try:
-                                job._callback = self._callback(job.to_dict())
-                            except Exception as ex:
-                                job._callback = str(ex)
+                            job._processed = time.time()
 
-                        job._processed = time.time()
+                            log.debug("Completed job: '{}'".format(job._id))
+                            if not self._auto_remove:
+                                heappush(self._q_completed, (int(job.priority), job._submitted, job.to_dict()))
+                                # self._n_q_completed += 1
 
-                        log.debug("Completed job: '{}'".format(job._id))
-                        if not self._auto_remove:
-                            heappush(self._q_completed, (int(job.priority), job._submitted, job.to_dict()))
-                            self._n_q_completed += 1
+                            if self._log_file is not None:
+                                Queue.log_csv(job=job.to_dict(), path=self._log_file)
 
-                        if self._log_file is not None:
-                            Queue.log_csv(job=job.to_dict(), path=self._log_file)
+                            del(self._q_working[job_id])
+                            self._n_completed += 1
+                            # self._n_q_working -= 1
 
-                        del(self._q_working[job_id])
-                        self._n_completed += 1
-                        self._n_q_working -= 1
+                            if job.lane is not None:
+                                lane = self._q_waiting_lanes.get(job.lane)
+                                if lane is not None:
+                                    next_job = None
+                                    parent_exitcode = job.get_exitcode()
+                                    while len(lane) > 0:
+                                        _, _, next_job = heappop(lane)
+                                        
+                                        if parent_exitcode == 0 or not next_job._stop_on_lane_error:
+                                            break
+                                        else:
+                                            next_job._cancelled = True
+                                            next_job._exitcode = parent_exitcode
+                                            next_job._exception = 'stop_on_lane_error = True and preceding job ({}) exit code is {}'.format(job._id, parent_exitcode)
+                                            next_job._processed = time.time()
+                                            if not self._auto_remove:
+                                                heappush(self._q_completed, (int(next_job.priority), next_job._submitted, next_job.to_dict()))
+                                            next_job = None
+                                            self._n_q_waiting -= 1 # decrement after completed.
+                                            continue
 
-                        if job.lane is not None:
-                            lane = self._q_waiting_lanes.get(job.lane)
-                            if lane is not None:
-                                _, _, job = heappop(lane)
-                                if len(lane) == 0:
-                                    del(self._q_waiting_lanes[job.lane])
-                                self._q_working[job._id] = job
-                                self._n_q_working += 1
-                                self._n_q_waiting -= 1
-                                self._start_job(job=job)
+                                    if len(lane) == 0:
+                                        del(self._q_waiting_lanes[job.lane])
 
-                while self.has_waiting() and self.n_workers_free() > 0:
-                    _, _, job = heappop(self._q_waiting)
-                    self._q_working[job._id] = job
-                    self._n_q_working += 1
-                    self._n_q_waiting -= 1
-                    self._start_job(job=job)
+                                    if next_job is not None:
+                                        self._q_working[next_job._id] = next_job
+                                        self._start_job(job=next_job)
+                                        self._n_q_waiting -= 1 # decrement after started.
+
+                    while len(self._q_waiting) > 0 and self.n_workers_free() > 0:
+                        _, _, job = heappop(self._q_waiting)
+                        # self._n_q_working += 1
+                        self._q_working[job._id] = job
+                        self._start_job(job=job)
+                        self._n_q_waiting -= 1
+
+            except Exception as ex:
+                log.error(traceback.format_exc())
+            finally:
+                log.debug('Waiting={}; Working={}; Completed={}.'.format(self._n_q_waiting, len(self._q_working), len(self._q_completed)))
+            #     if locked:
+            #         self._lock.release()
 
     def size(self, waiting=False, working=False, completed=False):
         """Returns the number of jobs in the corresponding queue(s).
@@ -337,48 +413,46 @@ class Queue():
         """
 
         size = 0
+        locked = False
         
-        if not any([waiting, working, completed]) or all([waiting, working, completed]):
-            size = self._n_q_waiting + self._n_q_working + self._n_q_completed
-        else:
-            if waiting: size += self._n_q_waiting
-            if working: size += self._n_q_working
-            if completed: size += self._n_q_completed
+        try:
+            to_tally = sum([waiting, working, completed])
+            if to_tally != 1:
+                if to_tally == 0:
+                    waiting, working, completed = True, True, True
+                locked = self._lock.acquire() # must lock when more than 1 component included.
+
+            if waiting:
+                size += self._n_q_waiting
+            if working:
+                size += len(self._q_working)
+            if completed:
+                size += len(self._q_completed)
+        finally:
+            if locked:
+                self._lock.release()
 
         return size
 
-
-    def has_waiting(self):
-        '''True if there are jobs in the waiting queue; otherwise False.'''
-        return len(self._q_waiting) > 0 # self.size(waiting=True) > 0
-
-    def has_completed(self):
-        '''True if there are jobs in the completed queue; otherwise False.'''
-        return len(self._q_completed) > 0 # self.size(completed=True) > 0
-
-    def has_work(self):
-        '''True if there are jobs either waiting or being worked; otherwise False.'''
-        return self.size(waiting=True, working=True) > 0
-
     def n_workers_free(self):
         '''Returns the number of available processes.'''
-        return self._n_workers - self.size(working=True)
+        return self._n_workers - len(self._q_working)
 
     def is_working(self):
         '''True if there are running jobs.'''
-        return self.size(working=True) > 0
+        return len(self._q_working) > 0
 
     def is_busy(self):
         '''True if max concurrent limit (n_workers) is reached or if there are waiting jobs.'''
-        return self.n_workers_free() <= 0 or self.has_waiting()
+        return self.n_workers_free() == 0 or self._n_q_waiting > 0
 
-    def is_started(self):
-        '''True if the queue system pulse is running.'''
-        return self._ticker.is_running
+    # def is_running(self):
+    #     '''True if the queue system pulse is running.'''
+    #     return self.is_running
 
     def is_empty(self):
         '''True if there are no jobs in the queue system.'''
-        return self.size() <= 0
+        return self.size() == 0
 
     def is_full(self):
         '''True if the number of jobs in the queue system is equal to max_size.'''
@@ -388,13 +462,13 @@ class Queue():
         '''The difference between the number of jobs submitted and the number completed.'''
         return self._n_submitted - self._n_completed
 
-    def wait_worker(self, poll=0.1, timeout=0):
+    def wait_worker(self, poll=0, timeout=0):
         """Waits for the number of running jobs to fall below the max concurrent limit (n_workers)
 
         Args:
             poll: the time, in seconds, between checks.
                 - Accepts: float
-                - Default: 0.1
+                - Default: ezpq.Queue.poll
             timeout: when > 0, the maximum time to wait, in seconds. Otherwise, no limit.
                 - Accepts: float
                 - Default: 0 (unlimited)
@@ -402,19 +476,24 @@ class Queue():
         Returns:
             True if a worker is available; False otherwise.
         """
+        if poll is None or poll <= 0:
+            poll = self._poll
+        else:
+            assert poll >= self._poll
+
         start = time.time()
         while self.is_busy() and (timeout==0 or time.time() - start < timeout):
             time.sleep(poll)
 
         return not self.is_busy()
 
-    def wait(self, poll=0.1, timeout=0, show_progress=False):
+    def wait(self, poll=0, timeout=0, show_progress=False):
         """Waits for jobs to be completed by the queue system.
 
         Args:
             poll: the time, in seconds, between checks.
                 - Accepts: float
-                - Default: 0.1
+                - Default: ezpq.Queue.poll
             timeout: when > 0, the maximum time to wait, in seconds. Otherwise, no limit.
                 - Accepts: float
                 - Default: 0 (unlimited)
@@ -425,6 +504,11 @@ class Queue():
         Returns:
             0 if the expected number of jobs completed. > 0 otherwise.
         """
+
+        if poll is None or poll <= 0:
+            poll = self._poll
+        else:
+            assert poll >= self._poll
 
         n_pending = 0
 
@@ -442,13 +526,13 @@ class Queue():
 
         return n_pending
 
-    def waitpb(self, poll=0.1, timeout=0):
+    def waitpb(self, poll=0, timeout=0):
         """Waits for jobs to be completed by the queue system.
 
         Args:
             poll: the time, in seconds, between checks.
                 - Accepts: float
-                - Default: 0.1
+                - Default: ezpq.Queue.poll
             timeout: when > 0, the maximum time to wait, in seconds. Otherwise, no limit.
                 - Accepts: float
                 - Default: 0 (unlimited)
@@ -456,6 +540,11 @@ class Queue():
         Returns:
             0 if the expected number of jobs completed. > 0 otherwise.
         """
+
+        if poll is None or poll <= 0:
+            poll = self._poll
+        else:
+            assert poll >= self._poll
 
         n_pending = self.size(waiting=True, working=True)
 
@@ -491,10 +580,10 @@ class Queue():
             ex_obj = ex
             ex_msg = traceback.format_exc()
             code = -1
+        finally:
+            _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': ex_msg, '_exitcode': code} })
 
-        _output.update({ _job._id: {'_ended':time.time(), '_output':out, '_exception': ex_msg, '_exitcode': code} })
-
-        if ex_obj is not None and not _job._suppress_errors:
+        if not _job._suppress_errors and ex_obj is not None:
             raise ex_obj
 
     def _start_job(self, job):
@@ -596,13 +685,13 @@ class Queue():
 
         return self.collect()
 
-    def get(self, poll=0, timeout=0):
+    def get(self, wait=False, poll=0, timeout=0):
         """Pops the highest priority item from the completed queue.
 
         Args:
             poll: when > 0, time between checks
                 - Accepts: float
-                - Default: 0 (no wait); 0.1 if timeout > 0.
+                - Default: 0 (no wait)
             timeout: the maximum time, in seconds, to wait for a job to complete.
                 - Accepts: float
                 - Default: 0 (no wait/unlimited wait)
@@ -615,21 +704,26 @@ class Queue():
             Dictionary of the most recently completed, highest priority job.
         """
 
-        assert(not self._auto_remove)
+        assert (not self._auto_remove)
+
+        if (wait or timeout > 0) and (poll is None or poll <= 0):
+            poll = self._poll
+            wait = True
+        else:
+            assert poll <= 0 or poll >= self._poll
+            if not wait and (timeout > 0 or poll > 0):
+                wait = True
 
         job = None
-
-        if timeout > 0 and poll <= 0:
-            poll = 0.1
 
         start = time.time()
 
         while True:
-            if self.has_completed():
+            if len(self._q_completed) > 0:
                 _,_,job = heappop(self._q_completed)
-                self._n_q_completed -= 1
+                # self._n_q_completed -= 1
                 # job = x.to_dict()
-            elif (timeout > 0 or poll > 0) and (timeout <= 0 or time.time() - start < timeout):
+            elif wait and self.size() > 0 and (timeout <= 0 or time.time() - start < timeout):
                 time.sleep(poll)
                 continue
 
@@ -650,9 +744,9 @@ class Queue():
         """
 
         if n <= 0:
-            n = self.size(completed=True)
+            n = len(self._q_completed)
         else:
-            n = min(n, self.size(completed=True))
+            n = min(n, len(self._q_completed))
 
         return [self.get() for _ in range(n)]
 

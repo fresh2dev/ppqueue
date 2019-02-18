@@ -111,6 +111,7 @@ class Plot():
         import plotnine as gg
 
         df2 = self.jobs_df.loc[:, set(['qid', 'id', color_by, facet_by, 'submitted_offset', 'started_offset', 'ended_offset', 'processed_offset'])].melt(id_vars=set(['qid', 'id', color_by, facet_by]))
+        df2 = df2[df2['value'].notnull()]
 
         df_submit_start = df2[(df2['variable'] == 'submitted_offset') | (df2['variable'] == 'started_offset')]
         df_start_end = df2[(df2['variable'] == 'started_offset') | (df2['variable'] == 'ended_offset')]
@@ -121,11 +122,11 @@ class Plot():
             labs['title'] = title
 
         gg_obj = gg.ggplot(gg.aes(x='value', y='id', group='factor(id)')) + \
-                    gg.geom_line(df_submit_start, color='gray', size=bar_width, alpha=0.25) + \
+                    gg.geom_line(df_submit_start, color='gray', size=bar_width, alpha=0.2) + \
                     gg.geom_line(df_start_end,
                                 gg.aes(color='factor({})'.format(color_by)),
                                 size=bar_width, show_legend=bool(show_legend)) + \
-                    gg.geom_line(df_end_processed, color='gray', size=bar_width, alpha=0.25) + \
+                    gg.geom_line(df_end_processed, color='gray', size=bar_width, alpha=0.2) + \
                     gg.labs(**labs) + \
                     gg.labs(color=color_by) + \
                     Plot._plot_theme(grid_axis='x', theme=theme) + \

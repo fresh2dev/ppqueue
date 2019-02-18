@@ -4,7 +4,7 @@ import logging as log
 
 class Job():
 
-    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0, suppress_errors=False):
+    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0, suppress_errors=False, stop_on_lane_error=False):
         """Defines what to run within a `ezpq.Queue`, and how to run it.
 
         Args:
@@ -54,6 +54,7 @@ class Job():
 
         self.priority = priority
         self._suppress_errors = suppress_errors
+        self._stop_on_lane_error = stop_on_lane_error
         self._inner_job = None
         self._cancelled = False
         self._submitted = None
@@ -87,12 +88,15 @@ class Job():
             self._inner_job.join()
 
     def get_exitcode(self):
-        '''Returns the exit code of the inner job. Only works for processes, not threads.'''
-        if self._inner_job is not None and hasattr(self._inner_job, 'exitcode'):
-            return self._inner_job.exitcode
+        '''Returns the exit code of the inner job.'''
+        
+        if self._inner_job is not None and \
+            hasattr(self._inner_job, 'exitcode') and \
+            self._inner_job.exitcode is not None and \
+            not self._suppress_errors:
+                return self._inner_job.exitcode
         else:
             return self._exitcode
-        return None
 
     def _terminate(self):
         if self._inner_job is not None:

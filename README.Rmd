@@ -90,7 +90,7 @@ def random_sleep(x):
   return n
 ```
 
-```{python, echo=TRUE}
+```{python, echo=TRUE, eval=FALSE}
 start = time.time()
 
 output = [random_sleep(x) for x in range(60)]
@@ -100,9 +100,17 @@ end = time.time()
 print('> Runtime: ' + str(end - start))
 ```
 
+```
+## '> Runtime: 58.932034969329834'
+```
+
 Here is the function ran in parallel with an `ezpq` Queue of 6 workers. Thus, the runtime of the above operation will be reduced from ~60s to ~10s.
           
 ```{python, eval=FALSE, echo=TRUE}
+import time
+import random
+import ezpq
+
 start = time.time()
 
 with ezpq.Queue(6) as Q:
@@ -244,7 +252,7 @@ with ezpq.Queue(6) as Q:
         Q.put(random_sleep, x)
 
     # repeatedly print sizes until complete.
-    while Q.has_work():
+    while Q.size(waiting=True, working=True):
         print_sizes(Q)
         time.sleep(1)
 
@@ -253,7 +261,7 @@ with ezpq.Queue(6) as Q:
 
 ### wait
 
-The `wait()` method will block execution until all jobs complete. It also accepts a `timeout` parameter, given in seconds. The return value is the count of jobs that did not complete. Thus, a return value greater than 0 indicates the timeout was exceeded. The parameter `poll` can be used to adjust how frequently (in seconds) the operation checks for completed jobs (default=0.1).
+The `wait()` method will block execution until all jobs complete. It also accepts a `timeout` parameter, given in seconds. The return value is the count of jobs that did not complete. Thus, a return value greater than 0 indicates the timeout was exceeded. The parameter `poll` can be used to adjust how frequently (in seconds) the operation checks for completed jobs.
 
 New in v0.2.0, include `show_progress=True` to show a progress bar while waiting. This is equivalent to a call to `waitpb()`.
 
@@ -262,7 +270,7 @@ New in v0.2.0, include `show_progress=True` to show a progress bar while waiting
 
 ### get
 
-`get()` retrieves and deletes ("pop") the highest priority job from the completed queue, if one is available. If the completed queue is empty, `get()` returns `None`. However, `get()` will wait for a completed job if the `poll` frequency is greater than 0. If the timeout is exceeded, `None` is returned.
+`get()` retrieves and deletes ("pop") the highest priority job from the completed queue, if one is available. If the completed queue is empty, `get()` returns `None`. However, `get()` will wait for a completed job if `wait`, `poll`, or `timeout` are specified. If the timeout is exceeded, `None` is returned.
 
 ```{python, echo=TRUE}
 with ezpq.Queue(6) as Q:
@@ -274,7 +282,7 @@ with ezpq.Queue(6) as Q:
         
     # repeatedly `get()` until queue is empty.
     for i in range(n_inputs):
-        output[i] = Q.get(poll=0.1)
+        output[i] = Q.get(wait=True)
 ```
 
 ### collect
@@ -325,6 +333,30 @@ When you have jobs that are dependent upon another, you can use "lanes" to execu
 ![](docs/imgs/lanes.gif)
 
 In the above graphic, notice how same-colored bars never overlap. These bars represent jobs that are in the same lane, which executed synchronously.
+
+### Lane Error Handling
+
+You may want to short-circuit a synchronous lane if a job in the lane fails. You can do this by specifying `skip_on_lane_error=True` when putting a job in the queue. If specified and the preceding job has a non-zero exit code, this job will not be run.
+
+```{python, echo=TRUE}
+def reciprocal(x):
+    time.sleep(0.1) # slow things down
+    return 1/x      # will throw DivideByZero exception
+```
+
+```{python, echo=TRUE}
+import random
+with ezpq.Queue(6) as Q:
+    for i in range(100):
+        Q.put(reciprocal, random.randint(0, 10), lane=i%5, suppress_errors=True, stop_on_lane_error=True)
+    Q.wait()
+    output = Q.collect()
+
+plt = ezpq.Plot(output).build(facet_by='lane', color_by='exitcode', color_pal=['red', 'blue'])
+plt.save('docs/imgs/lane_error.png')
+```
+
+![](docs/imgs/lane_error.png)
 
 ## ezpq.Plot
 

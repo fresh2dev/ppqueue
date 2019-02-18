@@ -6,14 +6,17 @@ import random
 
 from _context import ezpq
 
-def return_me(x=1):
+def return_me(x):
     return x
+
+def reciprocal(x):
+    return 1/x
 
 class TestEZPQ(unittest.TestCase):
 
     def setUp(self):
         self.Q = ezpq.Queue(job_runner=Process, auto_start=True, n_workers=5)
-        in_list = list(range(100))
+        in_list = list(range(1000))
         random.shuffle(in_list)
         self.input = tuple(in_list)
 
@@ -48,7 +51,36 @@ class TestEZPQ(unittest.TestCase):
 
         self.assertEqual(self.input, out_list)
 
+    def test_lane_error(self):
+        for i in range(100):
+            self.Q.put(reciprocal, random.randint(0, 5), lane=i%5, suppress_errors=True, stop_on_lane_error=True)
+        self.Q.wait()
+        output = self.Q.collect()
+
+        self.assertGreater(len(self.input), len([x for x in output if x['started'] is not None]))
+
+
     def test_size(self):
+        for x in self.input:
+            self.Q.put(function=return_me, args=x)
+
+        sizes = [self.Q.size()
+                for i in range(len(self.input))
+                for _ in [self.Q.get(wait=True)]]
+
+        # numbers in `sizes` should decrement by 1 until reaching 0.
+        self.assertEqual(sizes, list(reversed(range(len(self.input)))))
+
+    def test_terminate(self):
+        for x in self.input:
+            self.Q.put(function=return_me, args=x, priority=x)
+        self.Q.stop_all()
+        output = self.Q.collect()
+
+        self.assertEqual(list(sorted([x['id'] for x in output])),
+                        list(range(1, len(self.input)+1)))
+
+    def test_empty(self):
         self.assertEqual(self.Q.size(), 0)
 
     def tearDown(self):
