@@ -29,7 +29,23 @@ import ezpq
 
 # `ezpq`: an easy parallel queueing system.
 
-Read this on [GitHub](https://github.com/dm3ll3n/ezpq) or [my site](https://www.donaldmellenbruch.com/project/ezpq/).
+> Read this on [GitHub](https://github.com/dm3ll3n/ezpq) or [my site](https://www.donaldmellenbruch.com/project/ezpq/).
+
+## How to get it
+
+Install from [PyPI](https://pypi.org/project/ezpq/) with:
+
+```python
+pip install ezpq
+```
+
+Optional packages:
+
+```python
+pip install pandas    # required for plots
+pip install plotnine  # required for plots
+pip install tqdm      # required for progress bars
+```
 
 ## Overview
 
@@ -58,22 +74,6 @@ The queueing system uses `multiprocessing.Process` by default and can also run j
 * Rich job details, easily viewed as pandas dataframe.
 * Built-in logging to CSV.
 * Customizable visualizations of queue operations.
-
-## How to get it
-
-Install from [PyPI](https://pypi.org/project/ezpq/) with:
-
-```python
-pip install ezpq
-```
-
-Optional packages:
-
-```python
-pip install pandas    # required for plots
-pip install plotnine  # required for plots
-pip install tqdm      # required for progress bars
-```
 
 ##  Quickstart
 
@@ -311,6 +311,44 @@ with ezpq.Queue(6) as Q:
 
 ![](docs/imgs/tqdm_map.gif)
 
+### starmap
+
+`starmap` is similar to `map`, but operates on a list of lists, with each nested list being unpacked as arguments to the function.
+
+```{python, echo=TRUE}
+def my_pow(x, k):
+    return '{}^{} = {}'.format(x, k, x**k)
+
+# list of lists to iterate over.
+args_list = [[x, x%4] # (x, k)
+            for x in range(100)]
+
+# starmap
+with ezpq.Queue(10) as Q:
+    output = Q.starmap(my_pow, iterable=args_list)
+    
+[x['output'] for x in output[:10]]
+```
+
+### startmapkw
+
+Same as `starmap`, but operations on a list of *dicts* to be expanded as kwargs to the function.
+
+```{python, echo=TRUE}
+def my_pow(x, k):
+    return '{}^{} = {}'.format(x, k, x**k)
+
+# list of dicts to iterate over.
+kwargs_list = [{ 'x':x, 'k':x%4 } # (x, k)
+                for x in range(100)]
+
+# starmapkw
+with ezpq.Queue(10) as Q:
+    output = Q.starmapkw(my_pow, iterable=kwargs_list)
+    
+[x['output'] for x in output[:10]]
+```
+
 ### dispose
 
 The queueing operations performed by `ezpq.Queue` are performed on a periodic basis. By default, the `poll` parameter for a Queue is `0.1` seconds. This "pulse" thread will continue firing until the Queue is disposed of.
@@ -336,7 +374,7 @@ In the above graphic, notice how same-colored bars never overlap. These bars rep
 
 ### Lane Error Handling
 
-You may want to short-circuit a synchronous lane if a job in the lane fails. You can do this by specifying `skip_on_lane_error=True` when putting a job in the queue. If specified and the preceding job has a non-zero exit code, this job will not be run.
+You may want to short-circuit a synchronous lane if a job in the lane fails. You can do this by specifying `stop_on_lane_error=True` when putting a job in the queue. If specified and the preceding job has a non-zero exit code, this job will not be run.
 
 ```{python, echo=TRUE}
 def reciprocal(x):

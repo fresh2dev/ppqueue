@@ -685,6 +685,40 @@ class Queue():
 
         return self.collect()
 
+    def starmap(self, function, iterable, args=None, kwargs=None, timeout=0, show_progress=False):
+        
+        assert hasattr(iterable, '__iter__')
+
+        if args is None:
+            args = []
+        elif not isinstance(args, list):
+            args = list(args)
+
+        for x in iterable:
+            job = ezpq.Job(function=function, args=list(x) + args, kwargs=kwargs, timeout=timeout)
+            self.submit(job)
+
+        self.wait(show_progress=show_progress)
+
+        return self.collect()
+
+    def starmapkw(self, function, iterable, args=None, kwargs=None, timeout=0, show_progress=False):
+        
+        assert hasattr(iterable, '__iter__')
+
+        if kwargs is None:
+            kwargs = {}
+        elif not isinstance(kwargs, dict):
+            kwargs = dict(kwargs)
+
+        for x in iterable:
+            job = ezpq.Job(function=function, args=args, kwargs={**x, **kwargs}, timeout=timeout)
+            self.submit(job)
+
+        self.wait(show_progress=show_progress)
+
+        return self.collect()
+
     def get(self, wait=False, poll=0, timeout=0):
         """Pops the highest priority item from the completed queue.
 

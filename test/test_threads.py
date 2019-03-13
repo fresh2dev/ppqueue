@@ -22,11 +22,11 @@ class TestEZPQ(unittest.TestCase):
 
     def test_priority(self):
         self.Q._stop()
-        
+
         for i,x in enumerate(self.input):
             self.Q.put(function=return_me, args=x,
                         priority=-i) # should result in reversed inputs.
-        
+
         self.Q.start()
         self.Q.wait()
 
@@ -34,8 +34,22 @@ class TestEZPQ(unittest.TestCase):
 
         self.assertEqual(tuple(reversed(self.input)), out_list)
 
-    def test_map(self):               
+    def test_map(self):
         job_data = self.Q.map(function=return_me, iterable=self.input)
+
+        out_list = tuple(job['output'] for job in job_data)
+
+        self.assertEqual(self.input, out_list)
+
+    def test_starmap(self):
+        job_data = self.Q.starmap(function=return_me, iterable=[[x] for x in self.input])
+
+        out_list = tuple(job['output'] for job in job_data)
+
+        self.assertEqual(self.input, out_list)
+
+    def test_starmapkw(self):
+        job_data = self.Q.starmapkw(function=return_me, iterable=[{'x': x} for x in self.input])
 
         out_list = tuple(job['output'] for job in job_data)
 

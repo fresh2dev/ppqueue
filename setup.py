@@ -10,7 +10,7 @@ README = (HERE / "README.rst").read_text()
 
 setup(
     name="ezpq",
-    version="0.2.1",
+    version="0.2.2",
     #download_url = 'https://github.com/dm3ll3n/ezpq/releases/download/0.2.0/ezpq-0.2.0.tar.gz',
     description="an easy parallel queueing system",
     long_description=README,
