@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% raw %}
+<!-- {% block announce %} -->
+<!-- <p>Hello world</p> -->
+<!-- {% endblock %} -->
+{% endraw %}
+
+{% block fonts %}
+<style>
+@import url("https://www.fresh2.dev/assets/css/fonts.css");
+
+:root {
+  --md-text-font: iAWriterQuattroS, -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Ubuntu, roboto, noto, arial, sans-serif;
+  --md-code-font: iAWriterMonoS, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace;
+}
+</style>
+{% endblock %}
+
+{% block analytics %}
+<script>
+    window.goatcounter = {
+        path: function(p) {
+            if (window.location.host.toLowerCase().endsWith(".fresh2.dev"))
+                return p
+            window.goatcounter = {no_onload: true}
+            return null
+        }
+    }
+</script>
+<script data-goatcounter="https://stats.fresh2.dev/count"
+        async src="//stats.fresh2.dev/count.js"></script>
+{% endblock %}

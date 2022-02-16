@@ -1,0 +1,107 @@
+site_name: "ezpq"
+site_description: "ezpq Docs"
+site_url: !ENV [MKDOCS_SITE_URL, "https://www.Fresh2.dev/code/r/ezpq/i"]
+repo_url: "https://www.github.com/fresh2dev/ezpq"
+repo_name: "fresh2dev/ezpq"
+edit_uri: "edit/main/docs"
+#edit_uri_template: "src/branch/main/docs/{path}"
+docs_dir: "../docs"
+site_dir: "../public"
+
+copyright: '<a href="https://www.fresh2.dev"><img src="https://img.fresh2.dev/fresh2dev.svg" style="height: 3em; margin-right: 1em; filter: invert(100%);"></img></a> &copy; 2023 <a rel="license" target="_blank" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0; margin-left: 1em;" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>'
+extra:
+  generator: false
+  social: []
+    # - name: Fresh2.dev
+    #   icon: "material/home"
+    #   link: 'https://www.fresh2.dev'
+
+## https://www.mkdocs.org/user-guide/writing-your-docs/#configure-pages-and-navigation
+nav:
+  - Home: index.md
+  - Changelog: changelog.md
+  - License: license.md
+  - Articles:
+      - 'page/quickstart.md'
+  - Reference: reference/
+  - Discussion: comments.md
+
+watch:
+  - ../src
+
+theme:
+  name: material
+  language: en
+  custom_dir: overrides
+  palette:
+    - scheme: slate
+      primary: deep purple
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.instant
+    - navigation.indexes
+    - navigation.expand
+    - navigation.top
+    - announce.dismiss
+    # - navigation.footer
+
+# extra_css:
+#   - css/extra.css
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.magiclink:
+      hide_protocol: true
+      repo_url_shortener: false
+      social_url_shortener: false
+  - pymdownx.saneheaders
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+
+plugins:
+  - search
+  - include_dir_to_nav
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: ["src"]
+          options:
+            show_bases: false
+            show_source: false
+            members_order: 'source'  # 'alphabetical'
+            docstring_style: google
+            show_submodules: false
+            show_signature: false
+            merge_init_into_class: true
+            show_signature_annotations: false
+            separate_signature: false
+            show_if_no_docstring: false
+            show_root_heading: false
+            show_root_toc_entry: false
+            show_root_full_path: false
+            show_root_members_full_path: false
+            show_object_full_path: false
+            show_category_heading: true

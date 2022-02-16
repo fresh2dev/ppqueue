@@ -5,17 +5,18 @@ import time
 import traceback
 from collections import defaultdict
 from heapq import heappop, heappush
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union, Type
+from typing import Any, Callable, Dict, List, Optional, Sequence, Type, Union
 from uuid import uuid4
+
+from ezpq.FinishedJob import FinishedJob
+from ezpq.Job import Job
+from ezpq.utils import get_logger, is_windows_os, log_csv
 
 try:
     from tqdm.auto import tqdm
 except ImportError as e:
     print("Unable to import `tqdm`; continuing.")
 
-from ezpq.FinishedJob import FinishedJob
-from ezpq.Job import Job
-from ezpq.utils import get_logger, log_csv, is_windows_os
 
 LOG = get_logger(__name__, level=logging.INFO)
 
@@ -68,18 +69,18 @@ class Queue(object):
     DEFAULT_LANE: Optional[str] = None
 
     def __init__(
-            self,
-            max_concurrent: int = mp.cpu_count(),
-            engine: Union[threading.Thread, mp.Process] = threading.Thread,
-            name: Optional[str] = None,
-            drop_finished: bool = False,
-            start: bool = True,
-            stop_when_idle: bool = False,
-            callback: Optional[Callable] = None,
-            output_file: Optional[str] = None,
-            pulse_freq_ms: int = 100,
-            show_progress: bool = False,
-            max_size: int = 0,
+        self,
+        max_concurrent: int = mp.cpu_count(),
+        engine: Union[threading.Thread, mp.Process] = threading.Thread,
+        name: Optional[str] = None,
+        drop_finished: bool = False,
+        start: bool = True,
+        stop_when_idle: bool = False,
+        callback: Optional[Callable] = None,
+        output_file: Optional[str] = None,
+        pulse_freq_ms: int = 100,
+        show_progress: bool = False,
+        max_size: int = 0,
     ):
         """Implements a parallel queueing system.
 
@@ -132,8 +133,10 @@ class Queue(object):
 
         if engine is mp.Process and is_windows_os():
             LOG.warning(
-                "multiprocessing performance is degraded on Windows systems. see: "
-                "https://docs.python.org/3/library/multiprocessing.html?highlight=process#the-spawn-and-forkserver-start-methods"
+                (
+                    "multiprocessing performance is degraded on Windows systems. see: "
+                    "https://docs.python.org/3/library/multiprocessing.html?highlight=process#the-spawn-and-forkserver-start-methods"
+                ),
             )
 
         self._engine: Union[mp.Process, threading.Thread] = engine
@@ -155,7 +158,8 @@ class Queue(object):
 
         self._pulse_freq_ms: int = pulse_freq_ms
         self._timer: Queue.RepeatedTimer = Queue.RepeatedTimer(
-            interval_ms=self._pulse_freq_ms, fun=self._pulse
+            interval_ms=self._pulse_freq_ms,
+            fun=self._pulse,
         )
 
         if start is True:
@@ -282,9 +286,10 @@ class Queue(object):
                                     job._output = None
                                     job._exitcode = 1
                                     job._exception_txt = Exception(
-                                        "{}\n\nNo data for data; it may have exited unexpectedly.".format(
-                                            str(ex)
-                                        )
+                                        "{}\n\nNo data for data; it may have exited"
+                                        " unexpectedly.".format(
+                                            str(ex),
+                                        ),
                                     )
 
                             if self._callback is not None:
@@ -319,13 +324,21 @@ class Queue(object):
                                     while len(lane_jobs) > 0:
                                         next_job = heappop(lane_jobs)
 
-                                        if parent_exitcode == 0 or not next_job._skip_on_lane_error:
+                                        if (
+                                            parent_exitcode == 0
+                                            or not next_job._skip_on_lane_error
+                                        ):
                                             break
                                         else:
                                             next_job._cancelled = True
                                             next_job._exitcode = parent_exitcode
-                                            next_job._exception_txt = "skip_on_lane_error = True and preceding data ({}) exit code is {}".format(
-                                                job.idx, parent_exitcode
+                                            next_job._exception_txt = (
+                                                "skip_on_lane_error = True and"
+                                                " preceding data ({}) exit code is {}"
+                                                .format(
+                                                    job.idx,
+                                                    parent_exitcode,
+                                                )
                                             )
                                             next_job._process_time = time.time()
                                             if not self._drop_finished:
@@ -345,8 +358,10 @@ class Queue(object):
                                         self._working_queue[next_job.idx] = next_job
                                         self._start_job(job=next_job)
 
-                    while len(self._waiting_lanes[Queue.DEFAULT_LANE]) > 0 \
-                            and self.max_concurrent - self.count_working() > 0:
+                    while (
+                        len(self._waiting_lanes[Queue.DEFAULT_LANE]) > 0
+                        and self.max_concurrent - self.count_working() > 0
+                    ):
                         job = heappop(self._waiting_lanes[Queue.DEFAULT_LANE])
                         self._working_queue[job.idx] = job
                         self._start_job(job=job)
@@ -358,8 +373,8 @@ class Queue(object):
                     "waiting={}; working={}; finished={}.".format(
                         self.count_waiting(),
                         self.count_working(),
-                        self.count_finished()
-                    )
+                        self.count_finished(),
+                    ),
                 )
 
     def count_input(self) -> int:
@@ -420,11 +435,11 @@ class Queue(object):
                 )  # must lock when more than 1 component included.
 
             if waiting:
-                counts['waiting'] = self.count_waiting()
+                counts["waiting"] = self.count_waiting()
             if working:
-                counts['working'] = self.count_working()
+                counts["working"] = self.count_working()
             if finished:
-                counts['finished'] = self.count_finished()
+                counts["finished"] = self.count_finished()
         finally:
             if is_locked:
                 self._lock.release()
@@ -449,14 +464,15 @@ class Queue(object):
     def join(self, *args, **kwargs):
         self.wait(*args, **kwargs)
 
-    def wait(self,
-             timeout: Optional[int] = 0,
-             poll_ms: Optional[int] = 0,
-             show_progress: Optional[bool] = None,
-             _fun: Optional[Callable] = None,
-             _target_value: Optional[int] = None,
-             _comparator: Optional[int] = None
-             ):
+    def wait(
+        self,
+        timeout: Optional[int] = 0,
+        poll_ms: Optional[int] = 0,
+        show_progress: Optional[bool] = None,
+        _fun: Optional[Callable] = None,
+        _target_value: Optional[int] = None,
+        _comparator: Optional[int] = None,
+    ):
         """Waits for jobs to be finished by the queue system.
 
         Args:
@@ -505,7 +521,9 @@ class Queue(object):
                 if show_progress:
                     pb = tqdm(total=current_value, unit="op")
 
-                while not _comparator(current_value, _target_value) and (timeout == 0 or time.time() - start < timeout):
+                while not _comparator(current_value, _target_value) and (
+                    timeout == 0 or time.time() - start < timeout
+                ):
                     time.sleep(poll_ms / 1000)
 
                     tmp_value = _fun()
@@ -546,8 +564,8 @@ class Queue(object):
                         "_output": out,
                         "_exception_txt": ex_msg,
                         "_exitcode": code,
-                    }
-                }
+                    },
+                },
             )
 
         if not _job.suppress_errors and ex_obj is not None:
@@ -573,7 +591,9 @@ class Queue(object):
             job_args["kwargs"].update({"_job": job, "_output": self._output})
 
         j: Union[Type[mp.Process], Type[threading.Thread]] = self._engine(
-            name=str(job.idx), target=Queue._job_wrapper, **job_args
+            name=str(job.idx),
+            target=Queue._job_wrapper,
+            **job_args,
         )
 
         LOG.debug("starting job %d (name=%s)", job.idx, job.name)
@@ -631,15 +651,14 @@ class Queue(object):
         return self.submit(job)
 
     def map(
-            self,
-            fun,
-            iterable,
-            static_args=None,
-            static_kwargs=None,
-            timeout=0,
-            show_progress=None,
+        self,
+        fun,
+        iterable,
+        static_args=None,
+        static_kwargs=None,
+        timeout=0,
+        show_progress=None,
     ):
-
         assert hasattr(iterable, "__iter__")
 
         if static_args is None:
@@ -654,7 +673,10 @@ class Queue(object):
         for x in iterable:
             static_args[0] = x
             job = Job(
-                fun=fun, args=list(static_args), kwargs=static_kwargs, timeout=timeout
+                fun=fun,
+                args=list(static_args),
+                kwargs=static_kwargs,
+                timeout=timeout,
             )
             self.submit(job)
 
@@ -663,15 +685,14 @@ class Queue(object):
         return self.collect()
 
     def starmap(
-            self,
-            fun,
-            iterable,
-            static_args=None,
-            static_kwargs=None,
-            timeout=0,
-            show_progress=None,
+        self,
+        fun,
+        iterable,
+        static_args=None,
+        static_kwargs=None,
+        timeout=0,
+        show_progress=None,
     ):
-
         assert hasattr(iterable, "__iter__")
 
         if static_args is None:
@@ -693,15 +714,14 @@ class Queue(object):
         return self.collect()
 
     def starmapkw(
-            self,
-            fun,
-            iterable,
-            static_args=None,
-            static_kwargs=None,
-            timeout=0,
-            show_progress=None,
+        self,
+        fun,
+        iterable,
+        static_args=None,
+        static_kwargs=None,
+        timeout=0,
+        show_progress=None,
     ):
-
         assert hasattr(iterable, "__iter__")
 
         if static_kwargs is None:
@@ -747,8 +767,13 @@ class Queue(object):
 
         if self.count_finished() == 0:
             if wait:
-                kwargs['show_progress'] = False
-                self.wait(_fun=self.count_finished, _target_value=1, _comparator=int.__ge__, **kwargs)
+                kwargs["show_progress"] = False
+                self.wait(
+                    _fun=self.count_finished,
+                    _target_value=1,
+                    _comparator=int.__ge__,
+                    **kwargs,
+                )
             else:
                 return None
 

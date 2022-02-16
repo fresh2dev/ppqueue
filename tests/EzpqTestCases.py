@@ -37,7 +37,9 @@ class EzpqTestCases(object):
 
         for i, x in enumerate(self.input):
             self.queue.put(
-                fun=return_me, args=x, priority=-i
+                fun=return_me,
+                args=x,
+                priority=-i,
             )  # should result in reversed inputs.
 
         self.queue.start()
@@ -75,7 +77,8 @@ class EzpqTestCases(object):
 
     def test_starmapkw(self):
         job_data = self.queue.starmapkw(
-            fun=return_me, iterable=[{"x": x} for x in self.input]
+            fun=return_me,
+            iterable=[{"x": x} for x in self.input],
         )
 
         output = tuple(job.output for job in job_data)
@@ -88,7 +91,9 @@ class EzpqTestCases(object):
     def test_lanes(self):
         for i, x in enumerate(self.input):
             self.queue.put(
-                fun=return_me, args=x, lane=i % self.queue.max_concurrent
+                fun=return_me,
+                args=x,
+                lane=i % self.queue.max_concurrent,
             )  # returns in order
 
         self.queue.wait()
@@ -114,7 +119,8 @@ class EzpqTestCases(object):
         output = self.queue.collect()
 
         TestCase().assertGreater(
-            len(self.input), len([x for x in output if x.started is not None])
+            len(self.input),
+            len([x for x in output if x.started is not None]),
         )
 
     def test_size(self):
@@ -140,7 +146,8 @@ class EzpqTestCases(object):
         output = self.queue.collect()
 
         TestCase().assertListEqual(
-            list(sorted([x.idx for x in output])), list(range(1, len(self.input) + 1))
+            list(sorted([x.idx for x in output])),
+            list(range(1, len(self.input) + 1)),
         )
 
     def test_empty(self):

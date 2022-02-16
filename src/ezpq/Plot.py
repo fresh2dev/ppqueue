@@ -1,13 +1,13 @@
 import logging as log
-from typing import List, Union, Optional
+from typing import List, Optional, Union
+
+from ezpq.FinishedJob import FinishedJob
 
 try:
     import pandas as pd
     import plotnine as gg
 except ImportError as e:
     print("Unable to import optional plot dependencies; continuing.")
-
-from ezpq.FinishedJob import FinishedJob
 
 
 class Plot:
@@ -34,7 +34,11 @@ class Plot:
         self.jobs_df = df
 
     @staticmethod
-    def _plot_theme(grid_axis: str = "both", grid_lines: str = "both", theme: str = "bw"):
+    def _plot_theme(
+        grid_axis: str = "both",
+        grid_lines: str = "both",
+        theme: str = "bw",
+    ):
         """Internal fun provides consistent theme across plots.
         Currently a slightly modified version of theme_bw() with configurable grid lines.
 
@@ -96,15 +100,15 @@ class Plot:
         )
 
     def build(
-            self,
-            color_by: Optional[str] = "qid",
-            facet_by: Optional[str] = "qid",
-            facet_scale: Optional[str] = "fixed",
-            show_legend: Optional[bool] = True,
-            bar_width: Optional[bool] = 1,
-            title: Optional[str] = None,
-            color_pal: Optional[str] = None,
-            theme: Optional[str] = "bw",
+        self,
+        color_by: Optional[str] = "qid",
+        facet_by: Optional[str] = "qid",
+        facet_scale: Optional[str] = "fixed",
+        show_legend: Optional[bool] = True,
+        bar_width: Optional[bool] = 1,
+        title: Optional[str] = None,
+        color_pal: Optional[str] = None,
+        theme: Optional[str] = "bw",
     ) -> gg.theme:
         # TODO: update me
         """Produces a plot based on the data and options provided to a `ezpq.Plot()` object.
@@ -157,55 +161,55 @@ class Plot:
         assert facet_scale in ["fixed", "free", "free_x", "free_y"]
 
         df2 = self.jobs_df.loc[
-              :,
-              {
-                  "qid",
-                  "idx",
-                  color_by,
-                  facet_by,
-                  "submitted_offset",
-                  "started_offset",
-                  "ended_offset",
-                  "processed_offset",
-              },
-              ].melt(id_vars={"qid", "idx", color_by, facet_by})
+            :,
+            {
+                "qid",
+                "idx",
+                color_by,
+                facet_by,
+                "submitted_offset",
+                "started_offset",
+                "ended_offset",
+                "processed_offset",
+            },
+        ].melt(id_vars={"qid", "idx", color_by, facet_by})
         df2 = df2[df2["value"].notnull()]
 
         df_submit_start = df2[
             (df2["variable"] == "submitted_offset")
             | (df2["variable"] == "started_offset")
-            ]
+        ]
         df_start_end = df2[
             (df2["variable"] == "started_offset") | (df2["variable"] == "ended_offset")
-            ]
+        ]
         df_end_processed = df2[
             (df2["variable"] == "ended_offset")
             | (df2["variable"] == "processed_offset")
-            ]
+        ]
 
         labs = {"x": "duration", "y": "job index"}
         if title is not None:
             labs["title"] = title
 
         gg_obj = (
-                gg.ggplot(gg.aes(x="value", y="idx", group="factor(idx)"))
-                + gg.geom_line(df_submit_start, color="gray", size=bar_width, alpha=0.2)
-                + gg.geom_line(
-            df_start_end,
-            gg.aes(color=f"factor({color_by})"),
-            size=bar_width,
-            show_legend=bool(show_legend),
-        )
-                + gg.geom_line(df_end_processed, color="gray", size=bar_width, alpha=0.2)
-                + gg.labs(**labs)
-                + gg.labs(color=color_by)
-                + Plot._plot_theme(grid_axis="x", theme=theme)
-                + gg.facet_grid(
-            facets=facet_by + "~",
-            labeller="label_both",
-            scales=facet_scale,
-            as_table=True,
-        )
+            gg.ggplot(gg.aes(x="value", y="idx", group="factor(idx)"))
+            + gg.geom_line(df_submit_start, color="gray", size=bar_width, alpha=0.2)
+            + gg.geom_line(
+                df_start_end,
+                gg.aes(color=f"factor({color_by})"),
+                size=bar_width,
+                show_legend=bool(show_legend),
+            )
+            + gg.geom_line(df_end_processed, color="gray", size=bar_width, alpha=0.2)
+            + gg.labs(**labs)
+            + gg.labs(color=color_by)
+            + Plot._plot_theme(grid_axis="x", theme=theme)
+            + gg.facet_grid(
+                facets=facet_by + "~",
+                labeller="label_both",
+                scales=facet_scale,
+                as_table=True,
+            )
         )
 
         if color_pal is None or not isinstance(color_pal, list):

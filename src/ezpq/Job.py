@@ -1,7 +1,7 @@
 import logging as log
 import time
 from datetime import datetime
-from typing import Callable, Sequence, Mapping, Optional, Any
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from ezpq import utils
 
@@ -12,16 +12,16 @@ class Job:
     """
 
     def __init__(
-            self,
-            fun: Callable,
-            args: Sequence[Any] = None,
-            kwargs: Mapping[str, Any] = None,
-            name: Optional[str] = None,
-            priority: Optional[int] = 100,
-            lane: Optional[int] = None,
-            timeout: Optional[int] = 0,
-            suppress_errors: Optional[bool] = False,
-            skip_on_lane_error: Optional[bool] = False,
+        self,
+        fun: Callable,
+        args: Sequence[Any] = None,
+        kwargs: Mapping[str, Any] = None,
+        name: Optional[str] = None,
+        priority: Optional[int] = 100,
+        lane: Optional[int] = None,
+        timeout: Optional[int] = 0,
+        suppress_errors: Optional[bool] = False,
+        skip_on_lane_error: Optional[bool] = False,
     ):
         """
         Required Arguments:
@@ -109,11 +109,11 @@ class Job:
         """`True` if the job is running and its timeout is exceeded,
         else `False`."""
         return (
-                self.is_running()
-                and self.timeout > 0
-                and self._start_time is not None
-                and self._finish_time is None
-                and self._start_time + self.timeout < time.time()
+            self.is_running()
+            and self.timeout > 0
+            and self._start_time is not None
+            and self._finish_time is None
+            and self._start_time + self.timeout < time.time()
         )
 
     def join(self) -> None:
@@ -128,10 +128,10 @@ class Job:
     @property
     def exitcode(self):
         if (
-                self._inner_job is not None
-                and hasattr(self._inner_job, "exitcode")
-                and self._inner_job.exitcode is not None
-                and not self._suppress_errors
+            self._inner_job is not None
+            and hasattr(self._inner_job, "exitcode")
+            and self._inner_job.exitcode is not None
+            and not self._suppress_errors
         ):
             return self._inner_job.exitcode
         else:

@@ -4,8 +4,7 @@ from threading import Thread
 from typing import Tuple
 
 import ezpq
-from ezpq.utils import get_logger
-from ezpq.utils import is_windows_os
+from ezpq.utils import get_logger, is_windows_os
 from tests.EzpqTestCases import EzpqTestCases, get_sample_data
 
 LOG = get_logger(__name__)
@@ -23,7 +22,10 @@ class TestThreading(unittest.TestCase, EzpqTestCases):
         del self.queue
 
 
-@unittest.skipIf(is_windows_os(), "multiprocessing tests are reliable on a windows os; skipping.")
+@unittest.skipIf(
+    is_windows_os(),
+    "multiprocessing tests are reliable on a windows os; skipping.",
+)
 class TestProcessing(unittest.TestCase, EzpqTestCases):
     def setUp(self):
         LOG.info(self.id())

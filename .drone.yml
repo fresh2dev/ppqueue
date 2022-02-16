@@ -1,75 +1,149 @@
 kind: template
-load: deploythatapp.jsonnet
+load: hostbutter.jsonnet
 data:
-  projectName: ${DRONE_REPO}
-  gitSshKey: default
-  ciImageRegistry: "registry.lokalhost.net"
   domains: >-
-    ["lokalhost.net", "fresh2.dev"]
+    ["lokalhost.net"]
   domainTriggers: >-
     {
-      "lokalhost.net": {
-        "branch": ["main", "master"],
-        "event": ["push", "custom"]
-      },
-      "fresh2.dev": {
-        "event": ["tag"]
-      }
+      "lokalhost.net": {}
     }
-  imageTags: ""
-  useDinD: false
-  publishDockerHub: false
-  deployStack: true
-  deployCommands: >-
+  domainClusterMap: >-
+    {}
+  publishRegistries: >-
     {}
   secrets: >-
     []
   secretFiles: >-
-    {}
+    {
+      "ENV_FILE": ".env"
+    }
   volumes: >-
     []
-  domainVars: >-
-    {
-      "lokalhost.net": {
-        "PYPI_CREDS": {"from_secret": "lokalhost.net_pypi-creds"}
-      }
-    }
   beforeSteps: >-
     [
       {
-        "name": "run-tests",
-        "image": "registry.lokalhost.net/python:3.9-buster",
-        "commands": ["make test", "make build-docs"],
-        "when": {
-          "event": ["push", "custom", "tag"]
-        }
+        "name": "py-test",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "environment": {
+          "PIP_CONF": {"from_secret": "PIP_CONF"},
+          "MYKE_MODULE": "mykefiles.python"
+        },
+        "commands": [
+          "mkdir -p ~/.config/pip && echo \"$PIP_CONF\" > ~/.config/pip/pip.conf",
+          "myke py-install",
+          "myke py-reports",
+          "myke py-build"
+        ],
+        "when": {}
       }
     ]
   afterSteps: >-
+    []
+  finalSteps: >-
     [
       {
-        "name": "publish-testpypi",
-        "image": "registry.lokalhost.net/python:3.9-buster",
+        "name": "py-build-package",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "environment": {
+          "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
+          "PIP_CONF": {"from_secret": "PIP_CONF"},
+          "MYKE_MODULE": "mykefiles.python"
+        },
         "commands": [
-          "echo -n \"$PYPI_CREDS\" > ~/.pypirc",
-          "make publish"
+          "echo \"$PYPI_CREDS\" > ~/.pypirc",
+          "mkdir -p ~/.config/pip && echo \"$PIP_CONF\" > ~/.config/pip/pip.conf",
+          "myke py-version-set --repository lokalhost",
+          "myke py-build"
+        ],
+        "when": {}
+      },
+      {
+        "name": "py-publish-sandbox",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "environment": {
+          "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
+          "PIP_CONF": {"from_secret": "PIP_CONF"},
+          "TWINE_CERT": "/etc/ssl/certs/ca-certificates.crt",
+          "MYKE_MODULE": "mykefiles.python"
+        },
+        "commands": [
+          "echo \"$PYPI_CREDS\" > ~/.pypirc",
+          "mkdir -p ~/.config/pip && echo \"$PIP_CONF\" > ~/.config/pip/pip.conf",
+          "myke py-publish --repository lokalhost"
+        ],
+        "when": {}
+      },
+      {
+        "name": "py-publish-dev",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "environment": {
+          "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
+          "PIP_CONF": {"from_secret": "PIP_CONF"},
+          "TWINE_CERT": "/etc/ssl/certs/ca-certificates.crt",
+          "MYKE_MODULE": "mykefiles.python"
+        },
+        "commands": [
+          "echo \"$PYPI_CREDS\" > ~/.pypirc",
+          "mkdir -p ~/.config/pip && echo \"$PIP_CONF\" > ~/.config/pip/pip.conf",
+          "myke py-publish --repository codeberg"
         ],
         "when": {
-          "branch": ["main", "master"],
-          "event": ["push", "custom"]
+          "ref": ["refs/heads/dev", "refs/heads/main", "refs/tags/*"]
         }
       },
       {
-        "name": "publish-pypi",
-        "image": "registry.lokalhost.net/python:3.9-buster",
+        "name": "py-publish-test",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "environment": {
+          "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
+          "PIP_CONF": {"from_secret": "PIP_CONF"},
+          "TWINE_CERT": "/etc/ssl/certs/ca-certificates.crt",
+          "MYKE_MODULE": "mykefiles.python"
+        },
         "commands": [
-          "echo -n \"$PYPI_CREDS\" > ~/.pypirc",
-          "VERSION=${DRONE_TAG} make publish-prod"
+          "echo \"$PYPI_CREDS\" > ~/.pypirc",
+          "mkdir -p ~/.config/pip && echo \"$PIP_CONF\" > ~/.config/pip/pip.conf",
+          "myke py-publish --repository testpypi"
         ],
         "when": {
-          "event": ["tag"]
+          "ref": ["refs/tags/*"]
+        }
+      },
+      {
+        "name": "py-publish-prod",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "environment": {
+          "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
+          "PIP_CONF": {"from_secret": "PIP_CONF"},
+          "TWINE_CERT": "/etc/ssl/certs/ca-certificates.crt",
+          "MYKE_MODULE": "mykefiles.python"
+        },
+        "commands": [
+          "echo \"$PYPI_CREDS\" > ~/.pypirc",
+          "mkdir -p ~/.config/pip && echo \"$PIP_CONF\" > ~/.config/pip/pip.conf",
+          "myke py-publish --repository pypi"
+        ],
+        "when": {
+          "ref": ["refs/tags/*"]
         }
       }
     ]
   extraObjects: >-
-    []
+    [
+      {
+        "kind": "secret",
+        "name": "PYPI_CREDS",
+        "get": {
+          "path": "secret/data/hostbutter/global",
+          "name": "PYPI_CREDS"
+        }
+      },
+      {
+        "kind": "secret",
+        "name": "PIP_CONF",
+        "get": {
+          "path": "secret/data/hostbutter/global",
+          "name": "PIP_CONF"
+        }
+      }
+    ]

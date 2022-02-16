@@ -1,0 +1,21 @@
+# Changes here will be overwritten by Copier
+_commit: a093063
+_src_path: https://codeberg.org/Fresh2dev/copier-f2dv-project.git
+author_email: hello@Fresh2.dev
+author_name: Donald Mellenbruch
+ci_domain_name: lokalhost.net
+docs_url: https://www.Fresh2.dev/code/r/ezpq/i
+funding_url: https://www.Fresh2.dev/funding
+home_page: https://www.Fresh2.dev
+is_minimal: false
+is_python: true
+license_type: GPLv3
+package_name: ezpq
+project_description: None
+project_name: ezpq
+python_version: '3.7'
+repo_mirror: https://www.Fresh2.dev/code/r/ezpq
+repo_name: fresh2dev/ezpq
+repo_owner: fresh2dev
+repo_url: https://www.github.com/fresh2dev/ezpq
+

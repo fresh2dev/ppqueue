@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Sequence, Mapping, Any
+from typing import Any, Mapping, Sequence
 
 from ezpq import utils
 from ezpq.Job import Job

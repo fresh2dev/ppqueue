@@ -1,14 +1,8 @@
+**/.git
+
 **/secrets
 !**/*.keep
-**/*.tmp
-.python-version
-
-/public
-
-/requirements.txt
-/dist
-/build
-
+**/*.tmp/build
 **/.coverage
 **/.hypothesis
 **/.tox
@@ -18,5 +12,3 @@
 **/.mypy_cache
 **/__pycache__
 **/.pytest_cache
-**/.ropeproject
-**/.ruff_cache

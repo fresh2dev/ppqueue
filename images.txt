@@ -1,0 +1,5 @@
+# public images to pull into local registry during ci; fully-qualified.
+# e.g., <registry>/<owner>/<image> -> docker.io/library/alpine:latest
+
+docker.io/python:3.10.10-slim-bullseye
+docker.io/nginx:1
