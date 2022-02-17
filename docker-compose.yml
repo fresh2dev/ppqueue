@@ -1,0 +1,73 @@
+---
+version: "3.9"
+
+networks:
+  private: {}
+  public:
+    name: ${PUBLIC_NETWORK}
+    external: true
+
+services:
+  app:
+    image: ${IMAGE_REGISTRY}/fresh2dev/${COMPOSE_PROJECT_NAME}:${IMAGE_TAG:-latest}
+    networks:
+      - public
+    configs:
+      - source: healthcheck
+        target: /healthcheck.sh
+    healthcheck:
+      # disable: true
+      test: ["CMD", "sh", "/healthcheck.sh", "http://localhost:${APP_HTTP_PORT}"]
+      interval: 60s
+      start_period: 60s
+      timeout: 10s
+      retries: 2
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        preferences: []
+        max_replicas_per_node: 1
+        constraints:
+          - "node.labels.${APP_PLACEMENT_LABEL} == true"
+          # - "node.role == manager"
+          # - "node.platform.arch==x86_64"
+          # - "node.platform.arch==armv7l"
+      resources:
+        reservations:
+          cpus: "0.05"
+          memory: "64M"
+      #   limits:
+      #     cpus: "0.50"
+      #     memory: "512M"
+      labels:
+        # enable traefik
+        - "traefik.enable=true"
+        - "traefik.docker.network=${PUBLIC_NETWORK}"
+        # define load balancer.
+        - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.loadbalancer.server.port=${APP_HTTP_PORT}"
+        - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.loadbalancer.server.scheme=${APP_HTTP_PROTOCOL:-http}"
+        - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.loadbalancer.sticky=${APP_STICKY_LB:-false}"
+        - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.loadbalancer.sticky.cookie.secure=${APP_STICKY_LB:-false}"
+        - "traefik.http.services.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.loadbalancer.sticky.cookie.name=StickySessionCookie_${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}"
+        # define http entrypoint.
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.entrypoints=web"
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.rule=Host(`${APP_SUBDOMAIN}${DOMAIN}`) && PathPrefix(`/${APP_ROUTE_PREFIX}`)"
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}.middlewares=https_redirect"
+        # define https entrypoint.
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_secure.entrypoints=websecure"
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_secure.rule=Host(`${APP_SUBDOMAIN}${DOMAIN}`) && PathPrefix(`/${APP_ROUTE_PREFIX}`)"
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_secure.tls=true"
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_secure.tls.certresolver=letsencrypt"
+        # set authelia middleware.
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_secure.middlewares=secure-headers@docker,authelia@docker"
+        # strip prefixes.
+        - "traefik.http.middlewares.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_prefix.stripprefix.prefixes=${APP_STRIP_PREFIX}"
+        - "traefik.http.routers.${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_secure.middlewares=${COMPOSE_PROJECT_NAME}_${APP_SVC_ID}_prefix"
+    volumes:
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+
+configs:
+  healthcheck:
+    name: ${COMPOSE_PROJECT_NAME}_healthcheck_01
+    file: healthcheck.sh

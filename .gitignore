@@ -1,10 +1,12 @@
-__pycache__
-.ipynb_checkpoints
-.vscode
 *.csv
+*.egg-info
 *.pyc
 .Rhistory
-examples.py
+.idea
+.ipynb_checkpoints
+.mypy_cache
+.pytest_cache
+.vscode
+__pycache__
 build
 dist
-*.egg-info

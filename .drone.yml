@@ -1,0 +1,75 @@
+kind: template
+load: deploythatapp.jsonnet
+data:
+  projectName: ${DRONE_REPO}
+  gitSshKey: default
+  ciImageRegistry: "registry.lokalhost.net"
+  domains: >-
+    ["lokalhost.net", "fresh2.dev"]
+  domainTriggers: >-
+    {
+      "lokalhost.net": {
+        "branch": ["main", "master"],
+        "event": ["push", "custom"]
+      },
+      "fresh2.dev": {
+        "event": ["tag"]
+      }
+    }
+  imageTags: ""
+  useDinD: false
+  publishDockerHub: false
+  deployStack: true
+  deployCommands: >-
+    {}
+  secrets: >-
+    []
+  secretFiles: >-
+    {}
+  volumes: >-
+    []
+  domainVars: >-
+    {
+      "lokalhost.net": {
+        "PYPI_CREDS": {"from_secret": "lokalhost.net_pypi-creds"}
+      }
+    }
+  beforeSteps: >-
+    [
+      {
+        "name": "run-tests",
+        "image": "registry.lokalhost.net/python:3.9-buster",
+        "commands": ["make test", "make build-docs"],
+        "when": {
+          "event": ["push", "custom", "tag"]
+        }
+      }
+    ]
+  afterSteps: >-
+    [
+      {
+        "name": "publish-testpypi",
+        "image": "registry.lokalhost.net/python:3.9-buster",
+        "commands": [
+          "echo -n \"$PYPI_CREDS\" > ~/.pypirc",
+          "make publish"
+        ],
+        "when": {
+          "branch": ["main", "master"],
+          "event": ["push", "custom"]
+        }
+      },
+      {
+        "name": "publish-pypi",
+        "image": "registry.lokalhost.net/python:3.9-buster",
+        "commands": [
+          "echo -n \"$PYPI_CREDS\" > ~/.pypirc",
+          "VERSION=${DRONE_TAG} make publish-prod"
+        ],
+        "when": {
+          "event": ["tag"]
+        }
+      }
+    ]
+  extraObjects: >-
+    []

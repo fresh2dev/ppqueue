@@ -1,29 +1,24 @@
-import pathlib
-from setuptools import setup
+import os
+from typing import List
 
-# The directory containing this file
-HERE = pathlib.Path(__file__).parent
+from setuptools import find_packages, setup
 
-# The text of the README file
-README = (HERE / "README.rst").read_text()
+
+def readlines(path: str) -> List[str]:
+    with open(path, "r", encoding="utf8") as f:
+        return [x.strip() for x in f.readlines() if x.strip() and not x.startswith("#")]
 
 
 setup(
-    name="ezpq",
-    version="0.2.2",
-    #download_url = 'https://github.com/dm3ll3n/ezpq/releases/download/0.2.0/ezpq-0.2.0.tar.gz',
-    description="an easy parallel queueing system",
-    long_description=README,
-    long_description_content_type='text/x-rst',
-    url="https://www.github.com/dm3ll3n/ezpq",
-    author="Donald Mellenbruch",
-    author_email="dmellenbruch@outlook.com",
-    license="MIT",
-    packages=["ezpq"],
-    keywords = ['Parallel', 'Queue'],
+    version=os.getenv("VERSION", "0.3.0"),
+    python_requires=">=3.6",
+    packages=find_packages(exclude=["tests"]),
     include_package_data=True,
     install_requires=[],
-    extras_require={
-        'plot': ['numpy', 'pandas', 'matplotlib', 'plotnine'] # ['numpy>=1.15.2', 'pandas>=0.23.4', 'matplotlib>=3.0.0', 'plotnine>=0.5.1']
-    },
+    extras_require={"plot": ["tqdm==4.62.3", "pandas==1.1.5", "plotnine==0.8.0"]},
+    # entry_points={
+    #     "console_scripts": [
+    #         f"{PWD.name} = {PWD.name}.__main__:main",
+    #     ],
+    # },
 )

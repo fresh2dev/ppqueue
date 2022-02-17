@@ -1,200 +1,261 @@
+import logging as log
 import time
 from datetime import datetime
-import logging as log
+from typing import Callable, Sequence, Mapping, Optional, Any
 
-class Job():
+from ezpq import utils
 
-    def __init__(self, function, args=None, kwargs=None, name=None, priority=100, lane=None, timeout=0, suppress_errors=False, stop_on_lane_error=False):
-        """Defines what to run within a `ezpq.Queue`, and how to run it.
 
-        Args:
-            function: the function to run.
-                - Accepts: function object
-            args: optional positional arguments to pass to the function.
-                - Accepts: list, tuple
-                - Default: None
-            kwargs: optional keyword arguments to pass to the function.
-                - Accepts: dict
-                - Default: None
-            name: optional name to give to the job. Does not have to be unique.
-                - Accepts: str
-                - Default: None; assumes same name as job id.
-            priority: priority value to assign. Lower values get processed sooner.
-                - Accepts: int
-                - Default: 100
-            lane: a sequential lane to place the job in. if it does not already exist, it will be created.
-                - Accepts: int, str; any hashable object
-                - Default: None; no lanes.
-            timeout: When > 0, if this value (in seconds) is exceeded, the job is terminated. Otherwise, no limit enforced.
-                - Accepts: float
-                - Default: 0 (unlimited)
+class Job:
+    """used internally in `ezpq.Queue`.
+    defines what to run, with what priority, and other options.
+    """
 
-        Returns:
-            ezpq.Job object
+    def __init__(
+            self,
+            fun: Callable,
+            args: Sequence[Any] = None,
+            kwargs: Mapping[str, Any] = None,
+            name: Optional[str] = None,
+            priority: Optional[int] = 100,
+            lane: Optional[int] = None,
+            timeout: Optional[int] = 0,
+            suppress_errors: Optional[bool] = False,
+            skip_on_lane_error: Optional[bool] = False,
+    ):
         """
+        Required Arguments:
+            fun {Callable}
 
-        self._qid = None # automatically assigned during processing.
-        self._id = None # automatically assigned during processing.
+        Keyword Arguments:
+            args {Sequence[Any]} -- (default: {None})
+            kwargs {Mapping[str, Any]} -- (default: {None})
+            name {Optional[str]} -- (default: {None})
+            priority {Optional[int]} -- (default: {100})
+            lane {Optional[int]} -- (default: {None})
+            suppress_errors {Optional[bool]} -- (default: {False})
+            skip_on_lane_error {Optional[bool]} -- (default: {False})
+        """
+        self._qid = None  # automatically assigned during processing.
+        self._idx = None  # automatically assigned during processing.
         self.name = name
         self.lane = lane
         self.timeout = timeout
-        self.function = function
-        
+        self.fun = fun
+
         if args is None:
             self.args = None
-        elif not hasattr(args, '__iter__'):
+        elif not hasattr(args, "__iter__"):
             self.args = [args]
         else:
             self.args = list(args)
-        
+
         if kwargs is None:
             self.kwargs = None
         else:
             self.kwargs = dict(kwargs)
 
-        self.priority = priority
+        self._priority = priority
         self._suppress_errors = suppress_errors
-        self._stop_on_lane_error = stop_on_lane_error
+        self._skip_on_lane_error = skip_on_lane_error
         self._inner_job = None
         self._cancelled = False
-        self._submitted = None
-        self._started = None
-        self._ended = None
-        self._processed = None
+        self._submit_time = None
+        self._start_time = None
+        self._finish_time = None
+        self._process_time = None
         self._output = None
         self._exitcode = None
-        self._exception = None
+        self._exception_txt = None
         self._callback = None
 
-    def is_running(self):
-        '''Returns true if the inner job is alive; false otherwise.'''
+    def compare(self, job) -> int:
+        """compares two jobs by priority or index.
+
+        Arguments:
+            job {ezpq.Job}
+
+        Returns:
+            int -- `1` if `self` is greater than comparison,
+                  `-1` if `self` is less than,
+                  `0` if equal.
+        """
+        return utils.compare_by(self, job, by=["priority", "idx"])
+
+    def __eq__(self, job) -> bool:
+        return self.compare(job) == 0
+
+    def __ne__(self, job) -> bool:
+        return self.compare(job) != 0
+
+    def __lt__(self, job) -> bool:
+        return self.compare(job) < 0
+
+    def __le__(self, job) -> bool:
+        return self.compare(job) <= 0
+
+    def __gt__(self, job) -> bool:
+        return self.compare(job) > 0
+
+    def __ge__(self, job) -> bool:
+        return self.compare(job) >= 0
+
+    def is_running(self) -> bool:
+        """`True` if the inner job/thread is alive,
+        else `False`."""
         return self._inner_job is not None and self._inner_job.is_alive()
 
-    def is_expired(self):
-        '''Returns true if the job is running and its timeout is exceeded; false otherwise.'''
-        return self.is_running() and \
-                self.timeout > 0 and \
-                self._started is not None and \
-                self._ended is None and \
-                self._started + self.timeout < time.time()
+    def is_expired(self) -> bool:
+        """`True` if the job is running and its timeout is exceeded,
+        else `False`."""
+        return (
+                self.is_running()
+                and self.timeout > 0
+                and self._start_time is not None
+                and self._finish_time is None
+                and self._start_time + self.timeout < time.time()
+        )
 
-    def _join(self):
-        '''Waits for the inner job to complete.
+    def join(self) -> None:
+        """waits for the job/thread to complete.
 
         Returns:
             None
-        '''
+        """
         if self._inner_job is not None:
             self._inner_job.join()
 
-    def get_exitcode(self):
-        '''Returns the exit code of the inner job.'''
-        
-        if self._inner_job is not None and \
-            hasattr(self._inner_job, 'exitcode') and \
-            self._inner_job.exitcode is not None and \
-            not self._suppress_errors:
-                return self._inner_job.exitcode
+    @property
+    def exitcode(self):
+        if (
+                self._inner_job is not None
+                and hasattr(self._inner_job, "exitcode")
+                and self._inner_job.exitcode is not None
+                and not self._suppress_errors
+        ):
+            return self._inner_job.exitcode
         else:
             return self._exitcode
 
-    def _terminate(self):
+    def terminate(self):
         if self._inner_job is not None:
             self._inner_job.terminate()
 
-    def _stop(self):
-        '''Terminates an existing process. Does not work for threads.'''
+    def stop(self):
+        """Terminates an existing process. Does not work for threads."""
         if self.is_running():
-            if not hasattr(self._inner_job, 'terminate'):
-                log.error('Unable to terminate thread.')
+            if not hasattr(self._inner_job, "terminate"):
+                log.error("Unable to terminate thread.")
             else:
                 self._inner_job.terminate()
                 self._inner_job.join()
-                self._ended = time.time()
+                self._finish_time = time.time()
                 self._cancelled = True
-                log.debug("Stopped job: '{}'".format(self._id))
+                log.debug("Stopped data: '%d'", self._idx)
 
-    def run_time(self):
-        '''Returns the runtime of a completed job.
+    def running_time(self):
+        """Returns the runtime of a finished data.
         Includes actual start time to finish time, not any overhead after.
-        '''
-        if self._ended:
-            return self._ended - self._started
+        """
+        if self._finish_time:
+            return self._finish_time - self._start_time
         return None
 
     def waiting_time(self):
-        '''Returns the amount of time a job has spent in the waiting queue.'''
-        if self._started:
-            return self._started - self._submitted
-        else:
-            return time.time() - self._submitted
-        return time.time() - self._started
+        """Returns the amount of time a data has spent in the waiting queue."""
+        if self._start_time:
+            return self._start_time - self._submit_time
+        return time.time() - self._submit_time
 
     def total_time(self):
-        '''Returns the total time a completed job spent in the ezpq.Queue system.
+        """Returns the total time a finished data spent in the ezpq.Queue system.
         Includes actual submit time to finish time, not any overhead after.
-        '''
-        if self._ended:
-            return self._ended - self._submitted
-        return time.time() - self._submitted
+        """
+        if self._finish_time:
+            return self._finish_time - self._submit_time
+        return time.time() - self._submit_time
 
     def get_submit_time(self):
-        '''Returns a datetime object of the time this job was submitted.'''
-        if self._submitted:
-            return datetime.fromtimestamp(self._submitted)
+        """Returns a datetime object of the time this data was submitted."""
+        if self._submit_time:
+            return datetime.utcfromtimestamp(self._submit_time)
         return None
 
     def get_start_time(self):
-        '''Returns a datetime object of the time this job was started.'''
-        if self._started:
-            return datetime.fromtimestamp(self._started)
+        """Returns a datetime object of the time this data was started."""
+        if self._start_time:
+            return datetime.utcfromtimestamp(self._start_time)
         return None
 
     def get_end_time(self):
-        '''Returns a datetime object of the time this job finished.'''
-        if self._ended:
-            return datetime.fromtimestamp(self._ended)
+        """Returns a datetime object of the time this data finished."""
+        if self._finish_time:
+            return datetime.utcfromtimestamp(self._finish_time)
         return None
 
     def get_processed_time(self):
-        '''Returns a datetime object of the time this job was processed.'''
-        if self._processed:
-            return datetime.fromtimestamp(self._processed)
+        """Returns a datetime object of the time this data was processed."""
+        if self._process_time:
+            return datetime.utcfromtimestamp(self._process_time)
         return None
 
     def is_processed(self):
-        '''Returns true if this job has been processed; false otherwise.
-        A processed job is one that has had its output gathered, callback called,
+        """Returns true if this data has been processed; false otherwise.
+        A processed data is one that has had its output gathered, callback called,
           before being removed from the working dictionary.
-        '''
-        return self._processed is not None
+        """
+        return self._process_time is not None
 
     def __str__(self):
-        return str(self.to_dict())
+        return str(self.__dict__)
 
     def __repr__(self):
         return self.__str__()
 
-    def to_dict(self):
-        '''Returns a dictionary of the ezpq.Job object.'''
-        return {
-            'qid': self._qid,
-            'id': self._id,
-            'name': self.name,
-            'priority': self.priority,
-            'lane': self.lane,
-            'timeout':self.timeout,
-            'function': self.function.__name__,
-            'args': self.args,
-            'kwargs': self.kwargs,
-            'submitted': self.get_submit_time(),
-            'started': self.get_start_time(),
-            'ended': self.get_end_time(),
-            'processed': self.get_processed_time(),
-            'exitcode': self.get_exitcode(),
-            'cancelled': self._cancelled,
-            'runtime': self.run_time(),
-            'output': self._output,
-            'exception': self._exception,
-            'callback': self._callback
-        }
+    @property
+    def cancelled(self):
+        return self._cancelled
+
+    @cancelled.setter
+    def cancelled(self, value):
+        self._cancelled = value
+
+    @property
+    def idx(self):
+        return self._idx
+
+    @idx.setter
+    def idx(self, value: int):
+        self._idx = value
+
+    @property
+    def suppress_errors(self):
+        return self._suppress_errors
+
+    @suppress_errors.setter
+    def suppress_errors(self, value: bool):
+        self._suppress_errors = value
+
+    @property
+    def priority(self):
+        return self._priority
+
+    @priority.setter
+    def priority(self, value: int):
+        self._priority = value
+
+    @property
+    def qid(self):
+        return self._qid
+
+    @property
+    def output(self):
+        return self._output
+
+    @property
+    def exception_txt(self):
+        return self._exception_txt
+
+    @property
+    def callback(self):
+        return self._callback

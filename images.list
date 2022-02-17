@@ -1,0 +1,5 @@
+# public images to pull into local registry during ci. must be fully-qualified.
+# e.g., <registry>/<owner>/<image> -> docker.io/library/alpine:latest
+
+docker.io/nginx:1
+docker.io/python:3.9-buster

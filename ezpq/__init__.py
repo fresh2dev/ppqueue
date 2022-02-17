@@ -1,5 +1,4 @@
-__version__ = "0.2.2"
-
+from .FinishedJob import FinishedJob
 from .Job import Job
-from .Queue import Queue
 from .Plot import Plot
+from .Queue import Queue
