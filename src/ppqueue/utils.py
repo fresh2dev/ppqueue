@@ -1,7 +1,8 @@
-import csv
+from __future__ import annotations
+
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, TypeVar, Union
 
 
 def get_logger(name: str, level: Optional[int] = None) -> logging.Logger:
@@ -91,18 +92,8 @@ def compare_by(object1: object, object2: object, by: List[str], _state: int = 0)
     return diff
 
 
-def log_csv(data: Dict[str, Any], path: str = "ezpq.log", append: bool = True):
-    csv_exists: bool = os.path.exists(path)
+T = TypeVar("T")
 
-    mode: str = "x"  # create
 
-    if csv_exists:
-        mode = "a" if append else "w"  # append else write.
-
-    with open(path, mode, encoding="utf8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(data.keys()))
-
-        if not csv_exists:
-            writer.writeheader()
-
-        writer.writerow(data)
+def dedupe_list(l: list[T]) -> list[T]:
+    return list(dict.fromkeys(l).keys())

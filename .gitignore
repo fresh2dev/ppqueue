@@ -9,6 +9,7 @@
 /dist
 /build
 
+**/.ipynb_checkpoints
 **/.coverage
 **/.hypothesis
 **/.tox

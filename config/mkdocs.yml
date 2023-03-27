@@ -1,8 +1,8 @@
-site_name: "ezpq"
-site_description: "ezpq Docs"
-site_url: !ENV [MKDOCS_SITE_URL, "https://www.Fresh2.dev/code/r/ezpq/i"]
-repo_url: "https://www.github.com/fresh2dev/ezpq"
-repo_name: "fresh2dev/ezpq"
+site_name: "ppqueue"
+site_description: "ppqueue Docs"
+site_url: !ENV [MKDOCS_SITE_URL, "https://www.Fresh2.dev/code/r/ppqueue/i"]
+repo_url: "https://www.github.com/fresh2dev/ppqueue"
+repo_name: "fresh2dev/ppqueue"
 edit_uri: "edit/main/docs"
 #edit_uri_template: "src/branch/main/docs/{path}"
 docs_dir: "../docs"
@@ -19,11 +19,12 @@ extra:
 ## https://www.mkdocs.org/user-guide/writing-your-docs/#configure-pages-and-navigation
 nav:
   - Home: index.md
+  - Articles:
+      - Examples: 'page/examples.ipynb'
+      - 'page/related.md'
+  - Reference: reference/
   - Changelog: changelog.md
   - License: license.md
-  - Articles:
-      - 'page/quickstart.md'
-  - Reference: reference/
   - Discussion: comments.md
 
 watch:
@@ -34,13 +35,14 @@ theme:
   language: en
   custom_dir: overrides
   palette:
+    # https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#primary-color
     - scheme: slate
-      primary: deep purple
+      primary: green
       toggle:
         icon: material/toggle-switch-off-outline
         name: Switch to light mode
     - scheme: default
-      primary: deep purple
+      primary: green
       toggle:
         icon: material/toggle-switch
         name: Switch to dark mode
@@ -83,6 +85,13 @@ plugins:
   - search
   - include_dir_to_nav
   - autorefs
+  - mkdocs-jupyter:
+      ignore_h1_titles: True
+      include_source: True
+      execute: false
+      remove_tag_config:
+        remove_input_tags:
+          - hidden
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -91,7 +100,7 @@ plugins:
           options:
             show_bases: false
             show_source: false
-            members_order: 'source'  # 'alphabetical'
+            members_order: 'alphabetical'  # 'source'
             docstring_style: google
             show_submodules: false
             show_signature: false

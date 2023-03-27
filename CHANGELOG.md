@@ -1,8 +1,19 @@
 # Changelog
 
-## v0.3.0
+## Unreleased
 
-- refactor full of breaking changes, for the sake of simplicity and completeness.
+- rename from `ezpq` to `ppqueue`
+- replaced `queue.get` with `queue.dequeue` / `queue.pop`
+- `queue.put` is an alias for `queue.enqueue`
+- renamed `queue.empty` to `queue.is_empty`
+- renamed `queue.full` to `queue.is_full`
+- renamed `queue.count_queues` to `queue.sizes`
+- replaced `ezpq.FinishedJob` with `ezpq.Job`
+- `job.output` is now `job.result`
+- `job.callback` is now `job.callback_result`
+- wrapped `Plot(...).build(...)` into just `plot_jobs(...)`
+- use of enums to constrain plot parameter choices
+- bump dependencies
 
 ## v0.2.1
 

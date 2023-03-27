@@ -3,11 +3,11 @@ requires = ["setuptools>=64", "build==0.*", "wheel==0.*", "twine==4.*"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ezpq"
+name = "ppqueue"
 authors = [
     {name = "Donald Mellenbruch", email = "hello@Fresh2.dev"},
 ]
-description = "None"
+description = "Parallel Process Queue (ppqueue) for Python"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
@@ -17,6 +17,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "typing-extensions; python_version<'3.10'",
+    "tqdm==4.*",
 ]
 
 [project.optional-dependencies]
@@ -26,15 +27,19 @@ dev = [
     "pylint-pytest==1.*",
     "mypy[reports]==0.*",
     "ruff==0.*",
-    "black==23.*",
+    "black[jupyter]==23.*",
     "isort==5.*",
     "bump2version==1.*",
-    "ipython",
     "pdbpp",
+    # python -m ipykernel install --user --name ppqueue
+    "ipykernel",
+    "ipywidgets",
+    "ipython",
 ]
 docs = [
     "mkdocs==1.*",
     "mkdocs-material==9.*",
+    "mkdocs-jupyter==0.24.*",
     "mkdocstrings[python]==0.20.*",
     "mkdocs-autorefs==0.*",
     "mkdocs-include-dir-to-nav==1.*",
@@ -51,22 +56,25 @@ tests = [
     #
     "mockish==0.1.*",
     "tqdm==4.*",
-    "pandas==1.*",
-    "plotnine==0.10.*",
+    "pandas>=1,<=2",
+    "plotnine==0.*",
 ]
 plot = [
-    "tqdm==4.*",
-    "pandas==1.*",
-    "plotnine==0.10.*",
+    "pandas>=1,<=2",
+    "plotnine==0.*",
+]
+extras = [
+    "pandas>=1,<=2",
+    "plotnine==0.*",
 ]
 
 [project.urls]
-Homepage = "https://www.Fresh2.dev/code/r/ezpq/i"
-Repository = "https://www.github.com/fresh2dev/ezpq"
+Homepage = "https://www.Fresh2.dev/code/r/ppqueue/i"
+Repository = "https://www.github.com/fresh2dev/ppqueue"
 Funding = "https://www.Fresh2.dev/funding"
 
 [project.scripts]
-ezpq = "ezpq.__main__:main"
+ppqueue = "ppqueue.__main__:main"
 
 [tool.setuptools.package-data]
 "*" = ["**"]
@@ -77,7 +85,7 @@ exclude = []
 namespaces = false
 
 [tool.setuptools.dynamic]
-version = {attr = "ezpq.__version__.__version__"}
+version = {attr = "ppqueue.__version__.__version__"}
 
 [tool.pytest.ini_options]
 minversion = 7.0
@@ -114,7 +122,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-include = 'src\/.*\.pyi?$|tests\/.*\.pyi?$'
+include = 'src\/.*\.pyi?$|tests\/.*\.pyi?|docs\/.*\.ipynb$'
 
 [tool.isort]
 profile = "black"

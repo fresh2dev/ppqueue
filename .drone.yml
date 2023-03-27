@@ -2,10 +2,13 @@ kind: template
 load: hostbutter.jsonnet
 data:
   domains: >-
-    ["lokalhost.net"]
+    ["lokalhost.net", "fresh2.dev"]
   domainTriggers: >-
     {
-      "lokalhost.net": {}
+      "lokalhost.net": {},
+      "fresh2.dev": {
+        "ref": ["refs/heads/main", "refs/tags/*"]
+      }
     }
   domainClusterMap: >-
     {}

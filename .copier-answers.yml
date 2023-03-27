@@ -1,21 +1,21 @@
 # Changes here will be overwritten by Copier
-_commit: a093063
+_commit: 8d1a17d
 _src_path: https://codeberg.org/Fresh2dev/copier-f2dv-project.git
 author_email: hello@Fresh2.dev
 author_name: Donald Mellenbruch
 ci_domain_name: lokalhost.net
-docs_url: https://www.Fresh2.dev/code/r/ezpq/i
+docs_url: https://www.Fresh2.dev/code/r/ppqueue/i
 funding_url: https://www.Fresh2.dev/funding
 home_page: https://www.Fresh2.dev
 is_minimal: false
 is_python: true
-license_type: GPLv3
-package_name: ezpq
-project_description: None
-project_name: ezpq
-python_version: '3.7'
-repo_mirror: https://www.Fresh2.dev/code/r/ezpq
-repo_name: fresh2dev/ezpq
+license_type: MIT
+package_name: ppqueue
+project_description: Parallel Process Queue (ppqueue) for Python
+project_name: ppqueue
+python_version: '3.8'
+repo_mirror: https://www.Fresh2.dev/code/r/ppqueue
+repo_name: fresh2dev/ppqueue
 repo_owner: fresh2dev
-repo_url: https://www.github.com/fresh2dev/ezpq
+repo_url: https://www.github.com/fresh2dev/ppqueue
 

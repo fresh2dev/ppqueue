@@ -2,8 +2,8 @@ import logging
 import unittest
 from unittest.case import TestCase
 
-from ezpq import Job
-from ezpq.utils import compare, compare_by, get_logger
+from ppqueue import Job
+from ppqueue.utils import compare, compare_by, dedupe_list, get_logger
 
 LOG = get_logger(__name__)
 
@@ -32,13 +32,15 @@ class TestUtils(unittest.TestCase):
         obj1: Job = Job(fun=None)
         obj2: Job = Job(fun=None)
 
-        obj1._priority = 1
-        obj2._priority = 1
-        obj1._idx = 1
-        obj2._idx = 1
+        obj1.priority = 1
+        obj2.priority = 1
+        obj1.idx = 1
+        obj2.idx = 1
         TestCase().assertEqual(0, compare_by(obj1, obj2, by=["priority", "idx"]))
 
-        obj2._idx = 2
+        obj2.idx = 2
         TestCase().assertEqual(-1, compare_by(obj1, obj2, by=["priority", "idx"]))
 
-    # TODO: `test_log_csv`
+    def test_dedupe_list(self):
+        TestCase().assertEqual([1, 2, 3], dedupe_list([1, 2, 3]))
+        TestCase().assertEqual([1, 2, 3], dedupe_list([1, 2, 3, 2, 1]))
