@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ppqueue"
 authors = [
-    {name = "Donald Mellenbruch", email = "hello@Fresh2.dev"},
+    {name = "Donald Mellenbruch", email = "hello@f2dv.com"},
 ]
-description = "Parallel Process Queue (ppqueue) for Python"
+description = "A Parallel Process Queue for Python."
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
@@ -25,7 +25,7 @@ dev = [
     "python-lsp-server[rope]==1.*",
     "pylint==2.*",
     "pylint-pytest==1.*",
-    "mypy[reports]==0.*",
+    "mypy[reports]==1.*",
     "ruff==0.*",
     "black[jupyter]==23.*",
     "isort==5.*",
@@ -69,9 +69,9 @@ extras = [
 ]
 
 [project.urls]
-Homepage = "https://www.Fresh2.dev/code/r/ppqueue/i"
+Homepage = "https://www.f2dv.com/r/ppqueue"
 Repository = "https://www.github.com/fresh2dev/ppqueue"
-Funding = "https://www.Fresh2.dev/funding"
+Funding = "https://www.f2dv.com/fund"
 
 [project.scripts]
 ppqueue = "ppqueue.__main__:main"

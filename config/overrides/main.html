@@ -14,6 +14,21 @@
   --md-text-font: iAWriterQuattroS, -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Ubuntu, roboto, noto, arial, sans-serif;
   --md-code-font: iAWriterMonoS, Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace;
 }
+
+/* hide jupyter notebooks input/output numbers */
+.jp-InputPrompt {
+  display: none !important;
+}
+
+.jp-OutputPrompt {
+  display: none !important;
+}
+
+/* hide jupyter notebooks tags */
+.jupyter-wrapper .celltoolbar {
+  display: none !important;
+}
+
 </style>
 {% endblock %}
 

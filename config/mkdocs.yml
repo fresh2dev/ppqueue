@@ -1,6 +1,6 @@
 site_name: "ppqueue"
 site_description: "ppqueue Docs"
-site_url: !ENV [MKDOCS_SITE_URL, "https://www.Fresh2.dev/code/r/ppqueue/i"]
+site_url: !ENV [MKDOCS_SITE_URL, "https://www.f2dv.com/r/ppqueue"]
 repo_url: "https://www.github.com/fresh2dev/ppqueue"
 repo_name: "fresh2dev/ppqueue"
 edit_uri: "edit/main/docs"
@@ -26,6 +26,10 @@ nav:
   - Changelog: changelog.md
   - License: license.md
   - Discussion: comments.md
+  - '<- f2dv.com':
+    - '/home': 'https://www.f2dv.com'
+    - '/code': 'https://www.f2dv.com/projects'
+    - '/fund': 'https://www.f2dv.com/fund'
 
 watch:
   - ../src

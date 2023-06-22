@@ -5,9 +5,11 @@ data:
     ["lokalhost.net", "fresh2.dev"]
   domainTriggers: >-
     {
-      "lokalhost.net": {},
+      "lokalhost.net": {
+        "event": {"exclude": ["promote"]}
+      },
       "fresh2.dev": {
-        "ref": ["refs/heads/main", "refs/tags/*"]
+        "event": ["promote", "tag"]
       }
     }
   domainClusterMap: >-
@@ -26,7 +28,7 @@ data:
     [
       {
         "name": "py-test",
-        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:a43f1d5",
         "environment": {
           "PIP_CONF": {"from_secret": "PIP_CONF"},
           "MYKE_MODULE": "mykefiles.python"
@@ -46,7 +48,7 @@ data:
     [
       {
         "name": "py-build-package",
-        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:a43f1d5",
         "environment": {
           "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
           "PIP_CONF": {"from_secret": "PIP_CONF"},
@@ -62,7 +64,7 @@ data:
       },
       {
         "name": "py-publish-sandbox",
-        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:a43f1d5",
         "environment": {
           "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
           "PIP_CONF": {"from_secret": "PIP_CONF"},
@@ -78,7 +80,7 @@ data:
       },
       {
         "name": "py-publish-dev",
-        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:a43f1d5",
         "environment": {
           "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
           "PIP_CONF": {"from_secret": "PIP_CONF"},
@@ -96,7 +98,7 @@ data:
       },
       {
         "name": "py-publish-test",
-        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:a43f1d5",
         "environment": {
           "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
           "PIP_CONF": {"from_secret": "PIP_CONF"},
@@ -114,7 +116,7 @@ data:
       },
       {
         "name": "py-publish-prod",
-        "image": "registry.lokalhost.net/fresh2dev/mykefiles:5de40c3",
+        "image": "registry.lokalhost.net/fresh2dev/mykefiles:a43f1d5",
         "environment": {
           "PYPI_CREDS": {"from_secret": "PYPI_CREDS"},
           "PIP_CONF": {"from_secret": "PIP_CONF"},

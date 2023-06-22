@@ -1,6 +1,8 @@
 **/secrets
 !**/*.keep
 **/*.tmp
+**/.vscode
+**/.DS_store
 .python-version
 
 /public
@@ -9,12 +11,12 @@
 /dist
 /build
 
+*.pyc
 **/.ipynb_checkpoints
 **/.coverage
 **/.hypothesis
 **/.tox
 **/.idea
-**/.vscode
 **/*.egg-info
 **/.mypy_cache
 **/__pycache__
