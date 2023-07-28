@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - rename from `ezpq` to `ppqueue`
 - replaced `queue.get` with `queue.dequeue` / `queue.pop`
