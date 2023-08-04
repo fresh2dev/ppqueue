@@ -73,7 +73,7 @@ class Queue:
         max_concurrent: int = mp.cpu_count(),
         *,
         max_size: int = 0,
-        engine: str | type[mp.Process] | type[threading.Thread] = threading.Thread,
+        engine: str | type[mp.Process] | type[threading.Thread] = mp.Process,
         name: str | None = None,
         callback: Callable[[Job], Any] | None = None,
         show_progress: bool = False,
