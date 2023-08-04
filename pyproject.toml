@@ -8,7 +8,7 @@ authors = [
     {name = "Donald Mellenbruch", email = "hello@f2dv.com"},
 ]
 description = "A Parallel Process Queue for Python."
-readme = "README.md"
+readme = "README.pypi.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.8"
 classifiers = [

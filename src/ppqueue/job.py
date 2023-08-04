@@ -68,16 +68,16 @@ class Job(object):
         if self.kwargs is None:
             self.kwargs = {}
 
-    def _compare(self, job: object) -> int:
+    def _compare(self, job: Job) -> int:
         """compares two jobs by priority or index.
 
         Arguments:
-            job {ppqueue.Job}
+            job: ...
 
         Returns:
-            int -- `1` if `self` is greater than comparison,
-                  `-1` if `self` is less than,
-                  `0` if equal.
+            `1` if `self` is greater than comparison,
+            `-1` if `self` is less than,
+            `0` if equal.
         """
         return compare_by(self, job, by=["priority", "idx"])
 
@@ -117,7 +117,11 @@ class Job(object):
             self.inner_job.join(*args, **kwargs)
 
     def get_exit_code(self) -> int | None:
-        """Exit code of the job."""
+        """Exit code of the job.
+
+        Returns:
+            ...
+        """
         if (
             not self.inner_job
             or not hasattr(self.inner_job, "exitcode")
@@ -146,6 +150,9 @@ class Job(object):
     def get_seconds_running(self) -> float | None:
         """The number of seconds a job was running for.
 
+        Returns:
+            ...
+
         Examples:
             >>> from ppqueue import Queue
             >>> from time import sleep
@@ -164,6 +171,9 @@ class Job(object):
     def get_seconds_waiting(self) -> float | None:
         """The amount of time a data has spent in the waiting queue.
 
+        Returns:
+            ...
+
         Examples:
             >>> job.get_seconds_waiting()  # doctest: +SKIP
         """
@@ -177,6 +187,9 @@ class Job(object):
 
     def get_seconds_total(self) -> float | None:
         """Returns the waiting + running duration of this job.
+
+        Returns:
+            ...
 
         Examples:
             >>> job.get_seconds_total()  # doctest: +SKIP
@@ -192,6 +205,9 @@ class Job(object):
     def get_submit_timestamp(self) -> datetime | None:
         """The time this job was submitted.
 
+        Returns:
+            ...
+
         Examples:
             >>> job.get_submit_timestamp()  # doctest: +SKIP
         """
@@ -200,19 +216,31 @@ class Job(object):
         return None
 
     def get_start_timestamp(self) -> datetime | None:
-        """Returns a datetime object of the time this data was started."""
+        """Returns a datetime object of the time this data was started.
+
+        Returns:
+            ...
+        """
         if self.start_timestamp:
             return datetime.utcfromtimestamp(self.start_timestamp)
         return None
 
     def get_finish_timestamp(self) -> datetime | None:
-        """Returns a datetime object of the time this data finished."""
+        """Returns a datetime object of the time this data finished.
+
+        Returns:
+            ...
+        """
         if self.finish_timestamp:
             return datetime.utcfromtimestamp(self.finish_timestamp)
         return None
 
     def get_processed_timestamp(self) -> datetime | None:
-        """Returns a datetime object of the time this data was processed."""
+        """Returns a datetime object of the time this data was processed.
+
+        Returns:
+            ...
+        """
         if self.process_timestamp:
             return datetime.utcfromtimestamp(self.process_timestamp)
         return None

@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.3.0
+## 0.4.0 - 2023-08-04
+
+### :point_right: Changes
+
+- *Breaking:* Default engine changed from `threading.Thread` to `mp.Process` [a3dc1af]
+
+### :metal: Other
+
+- Correct annotations and docstrings [7a2470a]
+
+## 0.3.0 - 2023-06-22
 
 - rename from `ezpq` to `ppqueue`
 - replaced `queue.get` with `queue.dequeue` / `queue.pop`
