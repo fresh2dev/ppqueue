@@ -6,7 +6,7 @@ import threading
 import time
 import traceback
 from heapq import heappop, heappush
-from typing import Any, Callable, Sequence, Type
+from typing import Any, Callable, Sequence
 from uuid import uuid4
 
 from tqdm.auto import tqdm
@@ -18,10 +18,8 @@ LOG = get_logger(__name__, level=logging.INFO)
 
 
 class PulseTimer:
-    """Periodically runs a function in a background thread.
-
-    ref: https://stackoverflow.com/a/13151299
-    """
+    # Periodically runs a function in a background thread.
+    # src: https://stackoverflow.com/a/13151299
 
     def __init__(
         self,
@@ -75,7 +73,7 @@ class Queue:
         max_concurrent: int = mp.cpu_count(),
         *,
         max_size: int = 0,
-        engine: Type[threading.Thread] | Type[mp.Process] = threading.Thread,
+        engine: str | type[mp.Process] | type[threading.Thread] = threading.Thread,
         name: str | None = None,
         callback: Callable[[Job], Any] | None = None,
         show_progress: bool = False,
@@ -84,12 +82,12 @@ class Queue:
         pulse_freq_ms: int = 100,
         no_start: bool = False,
     ):
-        """
+        """A parallel processing job runner / data structure.
 
         Args:
             max_concurrent: max number of concurrently running jobs.
             max_size: max size of the queue (default=0, unlimited).
-            engine: the engine used to run jobs; threads (default) or processes.
+            engine: the engine used to run jobs.
             name: an identifier for this queue.
             callback: a callable that is called immediately after each job is finished.
             show_progress: global setting for showing progress bars.
@@ -118,9 +116,22 @@ class Queue:
         self._max_concurrent: int = max_concurrent
         self._callback: Callable[..., Any] | None = callback
 
-        self._lock: threading.Lock = (
-            threading.Lock()
-        )  # https://opensource.com/article/17/4/grok-gil
+        # https://opensource.com/article/17/4/grok-gil
+        self._lock: threading.Lock = threading.Lock()
+
+        if isinstance(engine, str):
+            if engine.lower() in ["thread", "threads", "threading"]:
+                engine = threading.Thread
+            elif engine.lower() in [
+                "process",
+                "processes",
+                "processing",
+                "multiprocessing",
+            ]:
+                engine = mp.Process
+            else:
+                err: str = f"Unrecognized engine: {engine}. Choose either 'process' or 'thread'."
+                raise ValueError(err)
 
         if engine is mp.Process and is_windows_os():
             LOG.warning(
@@ -130,9 +141,9 @@ class Queue:
                 ),
             )
 
-        self._engine: Type[mp.Process] | Type[threading.Thread] = engine
+        self._engine: type[mp.Process] | type[threading.Thread] = engine
 
-        self._waiting_groups: dict[int | None, list[Job]] = {None: []}
+        self._waiting_groups: dict[int | None, list[Job]] = {self.DEFAULT_GROUP: []}
         self._working_queue: dict[int | None, Job] = {}
         self._finished_queue: list[Job] = []
 
@@ -155,10 +166,10 @@ class Queue:
             fun=self._pulse,
         )
 
+        self._stop_when_idle: bool = stop_when_idle
+
         if not no_start:
             self.start()
-
-        self._stop_when_idle: bool = stop_when_idle
 
         LOG.debug("Initialized pulse.")
 
@@ -208,8 +219,6 @@ class Queue:
             self._mp_manager.shutdown()
 
     def _clear_waiting(self) -> None:
-        """Clear the queue of pending jobs."""
-
         LOG.debug("Clearing waiting queue")
         with self._lock:
             keys = list(self._waiting_groups.keys())
@@ -226,8 +235,6 @@ class Queue:
                 del self._waiting_groups[k]
 
     def _stop_all(self, *, wait: bool = True) -> None:
-        """Stop and remove all running and waiting jobs."""
-
         self._clear_waiting()
 
         keys = list(self._working_queue.keys())
@@ -255,8 +262,7 @@ class Queue:
         return job
 
     def _pulse(self) -> None:
-        # TODO: document this better.
-        """Used internally; manages the queue system operations."""
+        # Used internally; manages the queue system operations.
 
         with self._lock:
             try:
@@ -359,7 +365,7 @@ class Queue:
                                         self._start_job(next_job)
 
                     while (
-                        len(self._waiting_groups[self.DEFAULT_GROUP]) > 0
+                        self._waiting_groups.get(self.DEFAULT_GROUP)
                         and self.max_concurrent - self._count_working() > 0
                     ):
                         job = heappop(self._waiting_groups[self.DEFAULT_GROUP])
@@ -377,19 +383,31 @@ class Queue:
                 )
 
     def _count_waiting(self) -> int:
-        """Get the number of pending jobs."""
+        """
+        Returns:
+            The number of pending jobs.
+        """
         return sum(len(v) for _, v in self._waiting_groups.items())
 
     def _count_working(self) -> int:
-        """Get the number of running jobs."""
+        """
+        Returns:
+            The number of running jobs.
+        """
         return len(self._working_queue)
 
     def _count_finished(self) -> int:
-        """Get the number of completed jobs."""
+        """
+        Returns:
+            The number of completed jobs.
+        """
         return len(self._finished_queue)
 
     def _count_remaining(self) -> int:
-        """Get the number of unfinished jobs (i.e., waiting + working)."""
+        """
+        Returns:
+            The number of unfinished jobs (i.e., waiting + working).
+        """
         return self.size(waiting=True, working=True)
 
     def _sizes(
@@ -461,6 +479,9 @@ class Queue:
             working: include working jobs.
             finished: include finished jobs.
 
+        Returns:
+            ...
+
         Examples:
             >>> from ppqueue import Queue
             ...
@@ -483,15 +504,27 @@ class Queue:
         return self._count_waiting() == 0 and self._count_working() == 0
 
     def is_busy(self) -> bool:
-        """True if max concurrent limit is reached or if there are waiting jobs."""
+        """True if max concurrent limit is reached or if there are waiting jobs.
+
+        Returns:
+            ...
+        """
         return self._count_waiting() > 0 or self.max_concurrent <= self._count_working()
 
     def is_empty(self) -> bool:
-        """True if there are no jobs in the queue system."""
+        """True if there are no jobs in the queue system.
+
+        Returns:
+            ...
+        """
         return self.size() == 0
 
     def is_full(self) -> bool:
-        """True if the number of jobs in the queue system is equal to max_size."""
+        """True if the number of jobs in the queue system is equal to max_size.
+
+        Returns:
+            ...
+        """
         return 0 < self._max_size <= self.size()
 
     def join(self, *args, **kwargs) -> int:
@@ -512,6 +545,10 @@ class Queue:
             timeout: seconds to wait before raising `TimeoutError` (default=0, indefinitely).
             poll_ms: milliseconds to pause between checks (default=100).
             show_progress: if True, present a progress bar.
+
+        Returns:
+            If `n <= 0`, returns the count of unfinished jobs.
+            Else, returns the count of finished jobs.
         """
         if poll_ms is None or poll_ms <= 0:
             poll_ms = self._pulse_freq_ms
@@ -573,7 +610,7 @@ class Queue:
         *args: Any,
         **kwargs: Any,
     ) -> tuple[str | None, str | None, int, float]:
-        """Used internally to wrap data, capture output and any exception."""
+        # Used internally to wrap data, capture output and any exception.
         stdout: str | None = None
         stderr: str | None = None
         exitcode: int
@@ -608,9 +645,11 @@ class Queue:
     def _submit(self, job: Job, /) -> int:
         """Submits a job into the ppqueue.Queue system.
 
-        Throws an exception if:
-            1. the Queue uses a Thread job_runner and this data has a timeout (can't terminate Threads),
-            2. the Queue max_size will be exceeded after adding this job.
+        Args:
+            job: ...
+
+        Raises:
+            OverflowError: if max_size will be exceeded after adding this job.
 
         Returns:
             The number of jobs submitted to the queue.
@@ -661,14 +700,18 @@ class Queue:
         """Adds a job to the queue.
 
         Args:
-            args:
-            kwargs:
-            name:
-            priority:
-            group:
-            timeout:
-            suppress_errors:
-            skip_on_group_error:
+            fun: ...
+            args: ...
+            kwargs: ...
+            name: ...
+            priority: ...
+            group: ...
+            timeout: ...
+            suppress_errors: ...
+            skip_on_group_error: ...
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -700,7 +743,16 @@ class Queue:
         return self._submit(job)
 
     def put(self, *args, **kwargs) -> int:
-        """Alias for `enqueue`. Adds a job to the queue.
+        """Alias for `enqueue`.
+
+        Adds a job to the queue.
+
+        Args:
+            *args: ...
+            **kwargs: ...
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -732,10 +784,15 @@ class Queue:
         """Submits many jobs to the queue -- one for each item in the iterable. Waits for all to finish, then returns the results.
 
         Args:
-            fun:
-            iterable:
-            timeout:
-            show_progress:
+            fun: ...
+            iterable: ...
+            *args: ...
+            timeout: ...
+            show_progress: ...
+            **kwargs: ...
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -771,10 +828,15 @@ class Queue:
         """Submits many jobs to the queue -- one for each sequence in the iterable. Waits for all to finish, then returns the results.
 
         Args:
-            fun:
-            iterable:
-            timeout:
-            show_progress:
+            fun: ...
+            iterable: ...
+            *args: static arguments passed to the function.
+            timeout: ...
+            show_progress: ...
+            **kwargs: static keyword-arguments passed to the function.
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -814,10 +876,15 @@ class Queue:
         """Submits many jobs to the queue -- one for each dictionary in the iterable. Waits for all to finish, then returns the results.
 
         Args:
-            fun:
-            iterable:
-            timeout:
-            show_progress:
+            fun: ...
+            iterable: ...
+            *args: static arguments passed to the function.
+            timeout: ...
+            show_progress: ...
+            **kwargs: static keyword-arguments passed to the function.
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -852,11 +919,14 @@ class Queue:
         _peek: bool = False,
         **kwargs: Any,
     ) -> Job | None:
-        """Removes and returns the job with the highest priority from the queue.
+        """Removes and returns the finished job with the highest priority from the queue.
 
         Args:
-            wait:
+            wait: if no jobs are finished, wait for one.
             **kwargs: passed to `Queue.wait`
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -891,7 +961,14 @@ class Queue:
         return job
 
     def pop(self, *args: Any, **kwargs: Any) -> Job | None:
-        """Alias for `dequeue`. Removes and returns the job with the highest priority from the queue.
+        """Alias for `dequeue`.
+
+        Args:
+            *args: ...
+            **kwargs: ...
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -911,11 +988,16 @@ class Queue:
         return self.dequeue(*args, **kwargs)
 
     def peek(self, *args: Any, **kwargs: Any) -> Job | None:
-        """Returns the job with the highest priority from the queue. Similar to `enqueue` / `pop`, but the job remains in the queue.
+        """Returns the job with the highest priority from the queue.
+
+        Similar to `dequeue` / `pop`, but the job remains in the queue.
 
         Args:
-            *args:
-            **kwargs:
+            *args: ...
+            **kwargs: ...
+
+        Returns:
+            ...
 
         Examples:
             >>> from ppqueue import Queue
@@ -947,6 +1029,9 @@ class Queue:
             n: collect this many jobs (default=0, all)
             wait: If True, block until this many jobs are finished. Else, immediately return all finished.
             **kwargs: kwargs given to `Queue.wait`.
+
+        Returns:
+            a list of `Job` instances.
 
         Examples:
             >>> from ppqueue import Queue

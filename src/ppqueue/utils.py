@@ -2,19 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List, Optional, TypeVar, Union
+from typing import List, Optional, TypeVar
 
 
 def get_logger(name: str, level: Optional[int] = None) -> logging.Logger:
-    """get or create a logger.
-
-    Args:
-        name (str)
-        level (Optional[int]): Defaults to logging.DEBUG.
-
-    Returns:
-        logging.Logger
-    """
     logger = logging.getLogger(name)
 
     logger.setLevel(logging.INFO if level is None else level)
@@ -33,18 +24,17 @@ def is_windows_os() -> bool:
     return os.name == "nt"
 
 
-def compare(num1: Union[int, float], num2: Union[int, float]) -> int:
-    """compare two numbers.
+def compare(num1: int | float, num2: int | float) -> int:
+    """Compare two numbers.
 
     Args:
-        num1 (Union[int, float]): the reference number.
-        num2 (Union[int, float]): the comparison number.
+        num1: the reference number.
+        num2: the comparison number.
 
     Returns:
-        int:
-            * 0  if num1 == num2
-            * 1  if num1 > num2
-            * -1 if num1 < num2
+        0  if num1 == num2
+        1  if num1 > num2
+        -1 if num1 < num2
     """
     if num1 == num2:
         return 0
@@ -62,21 +52,20 @@ def compare(num1: Union[int, float], num2: Union[int, float]) -> int:
 
 
 def compare_by(object1: object, object2: object, by: List[str], _state: int = 0) -> int:
-    """compare two objects by a list of attributes.
-    attributes are compared iteratively and the comparison will
+    """Compare two objects by a list of attributes.
+
+    Attributes are compared iteratively and the comparison will
     short-circuit when/if the objects are determined unequal.
 
     Args:
-        _state:
-        object1 (object): the reference object.
-        object2 (object): the comparison object.
-        by (List[str]): list of attributes to compare.
+        object1: the reference object.
+        object2: the comparison object.
+        by: list of attributes to compare.
 
     Returns:
-        int:
-            * 0  if object1 == object2
-            * 1  if object1 > object2
-            * -1 if object1 < object2
+        0  if object1 == object2
+        1  if object1 > object2
+        -1 if object1 < object2
     """
     if _state and _state >= len(by):
         # if we've compared all attributes,
