@@ -24,6 +24,8 @@ data:
     }
   volumes: >-
     []
+  initSteps: >-
+    []
   beforeSteps: >-
     [
       {
